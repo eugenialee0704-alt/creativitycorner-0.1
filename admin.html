@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin records - 管理員紀錄</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #FF6B8B;
+            --teal: #4ECDC4;
+            --ink: #333;
+            --paper: #FFF9E6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Nunito, sans-serif;
+            color: var(--ink);
+            background: var(--paper);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 24px;
+            background: linear-gradient(90deg, var(--pink), #c9a0dc 55%, var(--teal));
+            color: white;
+        }
+        header a { color: white; }
+        h1 { margin: 0; font-size: 1.6rem; }
+        header p { margin: 4px 0 0; }
+        button, .lang-switch button {
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .primary { background: white; color: var(--pink); }
+        .quiet { background: rgba(255,255,255,0.2); color: white; }
+        main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        .card {
+            background: white;
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+        label { display: block; font-weight: 700; margin: 12px 0 6px; }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font: inherit;
+        }
+        .error { color: #b42318; min-height: 1.2em; margin-top: 10px; }
+        .layout { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
+        .user-button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #fff;
+            border: 2px solid #f3d5de;
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .user-button.selected { border-color: var(--pink); background: #fff5f8; }
+        .user-button strong { display: block; }
+        .user-button span { color: #777; font-size: 0.9rem; }
+        .record h2 { margin-top: 0; color: var(--pink); }
+        .record h3 { margin: 22px 0 8px; color: #8a6500; }
+        .line { margin: 4px 0; }
+        .muted { color: #888; }
+        img.drawing, img.signature {
+            display: block;
+            max-width: min(100%, 520px);
+            margin-top: 8px;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid #eee;
+        }
+        .hidden { display: none; }
+        @media (max-width: 800px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1 class="lang-en">Admin records</h1>
+            <h1 class="lang-zh hidden">管理員紀錄</h1>
+            <p class="lang-en">Sign in to see each child's information, drawing, and activity answers.</p>
+            <p class="lang-zh hidden">登入後可以查看每位參加者的資料、圖畫和所有活動答案。</p>
+        </div>
+        <div>
+            <button class="quiet" id="langBtn" type="button">中文</button>
+            <a href="index.html" class="quiet" style="display:inline-block;text-decoration:none;border-radius:999px;padding:8px 16px;">Home</a>
+            <button class="quiet hidden" id="logoutBtn" type="button">Log out</button>
+        </div>
+    </header>
+    <main>
+        <section class="card" id="loginCard">
+            <h2 class="lang-en">Admin sign in</h2>
+            <h2 class="lang-zh hidden">管理員登入</h2>
+            <label class="lang-en" for="username">Username</label>
+            <label class="lang-zh hidden" for="username">用戶名</label>
+            <input id="username" autocomplete="username">
+            <label class="lang-en" for="password">Password</label>
+            <label class="lang-zh hidden" for="password">密碼</label>
+            <input id="password" type="password" autocomplete="current-password">
+            <p class="error" id="loginError"></p>
+            <button class="primary" id="loginBtn" type="button">Sign in</button>
+        </section>
+        <section class="layout hidden" id="records">
+            <div class="card" id="userList"></div>
+            <div class="card record" id="userRecord">
+                <p class="muted lang-en">Choose a name to see what that child saved.</p>
+                <p class="muted lang-zh hidden">請選擇一個名字，查看該參加者保存的內容。</p>
+            </div>
+        </section>
+    </main>
+    <script>
+        let language = 'en';
+        let authHeader = sessionStorage.getItem('cc_admin_auth') || '';
+
+        function applyLanguage() {
+            document.querySelectorAll('.lang-en').forEach(function (el) {
+                el.classList.toggle('hidden', language !== 'en');
+            });
+            document.querySelectorAll('.lang-zh').forEach(function (el) {
+                el.classList.toggle('hidden', language !== 'zh');
+            });
+            document.getElementById('langBtn').textContent = language === 'en' ? '中文' : 'EN';
+            document.getElementById('loginBtn').textContent = language === 'en' ? 'Sign in' : '登入';
+            document.getElementById('logoutBtn').textContent = language === 'en' ? 'Log out' : '登出';
+        }
+
+        function escapeText(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character];
+            });
+        }
+
+        async function adminGet(path) {
+            const response = await fetch(path, { headers: { Authorization: authHeader } });
+            if (!response.ok) throw new Error(String(response.status));
+            return response.json();
+        }
+
+        function showLogin(message) {
+            document.getElementById('loginCard').classList.remove('hidden');
+            document.getElementById('records').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('loginError').textContent = message || '';
+        }
+
+        function showRecords() {
+            document.getElementById('loginCard').classList.add('hidden');
+            document.getElementById('records').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+        }
+
+        function field(label, value) {
+            const text = String(value || '').trim();
+            return '<p class="line"><strong>' + escapeText(label) + ':</strong> ' +
+                (text ? escapeText(text) : '<span class="muted">(left blank)</span>') + '</p>';
+        }
+
+        function sortText(raw) {
+            let items = raw;
+            if (typeof raw === 'string') {
+                try { items = JSON.parse(raw || '[]'); } catch (error) { return String(raw || ''); }
+            }
+            if (!Array.isArray(items)) return '';
+            return items.map(function (item) {
+                return item && item.text ? item.text : '';
+            }).filter(Boolean).join(', ');
+        }
+
+        function activityBlock(title, responses, lines) {
+            let body = '<h3>' + escapeText(title) + '</h3>';
+            if (!responses) return body + '<p class="muted">Nothing saved yet.</p>';
+            lines.forEach(function (line) {
+                const value = line[0].indexOf('category') === 0 ? sortText(responses[line[0]]) : responses[line[0]];
+                body += field(line[1], value);
+            });
+            return body;
+        }
+
+        function checkBlock(title, submission) {
+            let body = '<h3>' + escapeText(title) + '</h3>';
+            if (!submission || !submission.responses || !submission.responses.answers) {
+                return body + '<p class="muted">Nothing saved yet.</p>';
+            }
+            const result = submission.responses.result || {};
+            const answers = submission.responses.answers || {};
+            body += field('Total creativity score', result.total);
+            body += field('Fluency', result.fluency);
+            body += field('Flexibility', result.flexibility);
+            const names = { book: 'Book', sticky: 'Sticky Note', brick: 'Brick', newspaper: 'Newspaper' };
+            Object.keys(answers).forEach(function (key) {
+                const lines = (answers[key] || []).map(function (line, index) {
+                    return (index + 1) + '. ' + (line || '—');
+                }).join('\n');
+                body += '<p class="line"><strong>' + escapeText(names[key] || key) + '</strong><br>' +
+                    escapeText(lines).replace(/\n/g, '<br>') + '</p>';
+            });
+            return body;
+        }
+
+        function renderRecord(details) {
+            const user = details.user || {};
+            const consent = details.consent || {};
+            const submissions = details.submissions || [];
+            const byId = {};
+            submissions.forEach(function (item) { byId[item.activityId] = item; });
+            const animal = (byId[1] || {}).responses || null;
+            const drawing = details.drawingDataUrl || ((byId[1] || {}).metadata || {}).animalDrawingDataUrl || '';
+            const signature = consent.participantSignatureDataUrl || '';
+            let html = '<h2>' + escapeText(user.name || 'Participant') + '</h2>';
+            html += '<h3>Personal information</h3>';
+            html += field('Name', user.name);
+            html += field('Age', user.age);
+            html += field('Email', user.email);
+            html += field('Language', user.language === 'zh' ? '中文' : 'English');
+            html += field('Joined', user.joinedDate ? String(user.joinedDate).slice(0, 10) : '');
+            html += '<h3>Consent</h3>';
+            if (!details.consent) {
+                html += '<p class="muted">No consent saved.</p>';
+            } else {
+                html += field('Name on consent', consent.participantName);
+                html += field('Signing date', consent.participantDate || consent.signedDate);
+                html += signature.indexOf('data:image') === 0
+                    ? '<img class="signature" alt="Signature" src="' + signature + '">'
+                    : '<p class="muted">No signature saved.</p>';
+            }
+            html += '<h3>Drawing</h3>';
+            html += drawing.indexOf('data:image') === 0
+                ? '<img class="drawing" alt="Animal drawing" src="' + drawing + '">'
+                : '<p class="muted">No drawing saved.</p>';
+            html += activityBlock('1. Transformation of Animals', animal, [
+                ['animalName', 'Name of the new animal'],
+                ['animalDescription', 'Description']
+            ]);
+            html += activityBlock('2. What If...?', (byId[2] || {}).responses || null, [1, 2, 3, 4, 5, 6].map(function (n) {
+                return ['Result' + n, 'Result ' + n];
+            }));
+            html += activityBlock('3. Word Association', (byId[3] || {}).responses || null, [1, 2, 3, 4, 5].map(function (n) {
+                return ['word' + n, 'Word ' + n];
+            }).concat([['wordStory', 'Story']]));
+            html += activityBlock('4. Penguin in the Desert', (byId[4] || {}).responses || null, [1, 2, 3, 4, 5].map(function (n) {
+                return ['idea' + n, 'Idea ' + n];
+            }));
+            html += activityBlock('5. Brainstorming', (byId[5] || {}).responses || null, [
+                ['solution1', 'Solution 1'],
+                ['solution2', 'Solution 2'],
+                ['solution3', 'Solution 3'],
+                ['solution4', 'Solution 4'],
+                ['category1', 'Things we can do right now'],
+                ['category2', 'Things we can do, but need help from others'],
+                ['category3', 'Hard to do'],
+                ['category4', 'Fun ideas but not really helpful']
+            ]);
+            html += checkBlock('Creativity check before training', byId[101]);
+            html += checkBlock('Creativity check after training', byId[102]);
+            return html;
+        }
+
+        async function openUser(user, button) {
+            document.querySelectorAll('.user-button').forEach(function (item) {
+                item.classList.remove('selected');
+            });
+            if (button) button.classList.add('selected');
+            const record = document.getElementById('userRecord');
+            record.innerHTML = '<p class="muted">Loading...</p>';
+            try {
+                const details = await adminGet('/api/admin/users/' + encodeURIComponent(user.id));
+                record.innerHTML = renderRecord(details);
+            } catch (error) {
+                record.innerHTML = '<p class="error">Could not load this record.</p>';
+            }
+        }
+
+        async function loadUsers() {
+            const data = await adminGet('/api/admin/users');
+            const users = data.users || [];
+            const list = document.getElementById('userList');
+            showRecords();
+            if (!users.length) {
+                list.innerHTML = '<p class="muted">No children have registered yet.</p>';
+                return;
+            }
+            list.innerHTML = '<h2>Registered children</h2>';
+            users.forEach(function (user) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'user-button';
+                const done = (user.completedActivities || []).length;
+                button.innerHTML = '<strong>' + escapeText(user.name) + '</strong><span>' +
+                    escapeText(user.email || '') + ' · ' + done + '/5 activities</span>';
+                button.addEventListener('click', function () { openUser(user, button); });
+                list.appendChild(button);
+            });
+            showRecords();
+        }
+
+        async function signIn() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            authHeader = 'Basic ' + btoa(username + ':' + password);
+            try {
+                await loadUsers();
+                sessionStorage.setItem('cc_admin_auth', authHeader);
+                document.getElementById('loginError').textContent = '';
+            } catch (error) {
+                authHeader = '';
+                sessionStorage.removeItem('cc_admin_auth');
+                document.getElementById('loginError').textContent = language === 'en'
+                    ? 'That username or password is not correct.'
+                    : '用戶名或密碼不正確。';
+            }
+        }
+
+        document.getElementById('loginBtn').addEventListener('click', signIn);
+        document.getElementById('password').addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') signIn();
+        });
+        document.getElementById('langBtn').addEventListener('click', function () {
+            language = language === 'en' ? 'zh' : 'en';
+            applyLanguage();
+        });
+        document.getElementById('logoutBtn').addEventListener('click', function () {
+            authHeader = '';
+            sessionStorage.removeItem('cc_admin_auth');
+            showLogin('');
+        });
+        applyLanguage();
+        if (authHeader) {
+            loadUsers().catch(function () { showLogin(''); });
+        }
+    </script>
+</body>
+</html>

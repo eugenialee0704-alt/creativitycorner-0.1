@@ -516,6 +516,75 @@ def save_submission(body):
     return 200, {"ok": True}
 
 
+def drawing_data_url(user_id, metadata):
+    path = os.path.join(DRAWING_DIR, user_id + ".png")
+    if os.path.isfile(path):
+        with open(path, "rb") as handle:
+            encoded = base64.b64encode(handle.read()).decode("ascii")
+        return "data:image/png;base64," + encoded
+    saved = metadata.get("animalDrawingDataUrl") if isinstance(metadata, dict) else ""
+    if isinstance(saved, str) and saved.startswith("data:image"):
+        return saved
+    return ""
+
+
+def names_match(stored, typed):
+    return str(stored or "").strip().casefold() == str(typed or "").strip().casefold()
+
+
+def my_account(body):
+    name = str(body.get("name") or "").strip()
+    email = str(body.get("email") or "").strip().lower()
+    if not name or not email:
+        return 400, {"error": "Name and email are required"}
+    with connect() as connection:
+        row = connection.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if not row:
+            return 404, {"error": "No account found"}
+        if not names_match(row["name"], name):
+            return 401, {"error": "Name and email do not match"}
+        user = user_public(row)
+        consent_row = connection.execute(
+            "SELECT consent_json FROM consents WHERE user_id = ?", (user["id"],)
+        ).fetchone()
+        submissions = [
+            submission_from_row(item)
+            for item in connection.execute(
+                "SELECT * FROM submissions WHERE user_id = ? ORDER BY activity_id", (user["id"],)
+            )
+        ]
+    consent = load_json(consent_row["consent_json"], None) if consent_row else None
+    activities = []
+    creativity = {"pre": None, "post": None}
+    drawing = ""
+    puzzle_progress = None
+    for item in submissions:
+        metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+        if metadata.get("puzzleProgress") is not None:
+            puzzle_progress = metadata.get("puzzleProgress")
+        activity_id = item["activityId"]
+        if activity_id == 1:
+            drawing = drawing_data_url(user["id"], metadata)
+        if activity_id in (101, 102):
+            phase = "pre" if activity_id == 101 else "post"
+            creativity[phase] = item.get("responses")
+            continue
+        if activity_id in (1, 2, 3, 4, 5):
+            activities.append({
+                "id": activity_id,
+                "savedAt": item.get("savedAt"),
+                "responses": item.get("responses") or {},
+            })
+    return 200, {
+        "user": user,
+        "consentSigned": bool(consent),
+        "drawingDataUrl": drawing,
+        "puzzleProgress": puzzle_progress,
+        "activities": activities,
+        "creativityCheck": creativity,
+    }
+
+
 def list_users():
     with connect() as connection:
         users = [user_public(row) for row in connection.execute("SELECT * FROM users ORDER BY joined_date")]
@@ -537,7 +606,16 @@ def user_details(user_id):
             )
         ]
     consent = load_json(consent_row["consent_json"], None) if consent_row else None
-    return 200, {"user": user_public(row), "consent": consent, "submissions": submissions}
+    drawing = ""
+    for item in submissions:
+        if item["activityId"] == 1:
+            drawing = drawing_data_url(user_id, item.get("metadata") or {})
+    return 200, {
+        "user": user_public(row),
+        "consent": consent,
+        "submissions": submissions,
+        "drawingDataUrl": drawing,
+    }
 
 
 class RecordHandler(SimpleHTTPRequestHandler):
@@ -603,6 +681,14 @@ class RecordHandler(SimpleHTTPRequestHandler):
 
     def handle_api(self, method):
         path = urlparse(self.path).path.rstrip("/")
+        if method == "POST" and path == "/api/public/my-account":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = my_account(body)
+            self.send_json(status, payload)
+            return
         if method == "POST" and path == "/api/public/upsert-user":
             body = self.read_json()
             if body is None:

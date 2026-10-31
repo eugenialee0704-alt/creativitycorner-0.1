@@ -161,10 +161,14 @@
     gap: 8px;
 }
 
-.admin-login-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-}
+    .admin-login-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        a.admin-login-btn {
+            text-decoration: none;
+        }
 
         .logout-btn:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -308,6 +312,27 @@
         
         .btn:active {
             transform: translateY(0);
+        }
+
+        .my-work-card {
+            background: white;
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin: 16px 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .my-work-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .my-work-line {
+            margin: 4px 0;
+        }
+
+        .my-work-empty {
+            color: #888;
         }
         
         /* Consent Form Section */
@@ -2073,7 +2098,7 @@
             </section>
 
 <!-- Admin Dashboard Section -->
-<section class="admin-dashboard-section" id="adminDashboardSection">
+<section class="admin-dashboard-section" id="adminDashboardSection" style="display: none;">
     <div class="admin-header">
         <div>
             <h2 class="lang-en">Admin Dashboard</h2>
@@ -2598,9 +2623,76 @@ const puzzleImages = {
 
     async function trySyncUserOnLoad() {
         try {
+            if (currentUser && currentUser.name && currentUser.email) {
+                const data = await postJson('/api/public/my-account', {
+                    name: currentUser.name,
+                    email: currentUser.email
+                });
+                applyServerAccount(data);
+                if (dashboardSection && dashboardSection.style.display !== 'none') {
+                    showDashboard();
+                }
+                return;
+            }
             await upsertCurrentUserToBackend();
         } catch (e) {
             // Backend not running / not reachable — ignore.
+        }
+    }
+
+    function requestStatus(error) {
+        const match = String(error && error.message || '').match(/Request failed: (\d+)/);
+        return match ? Number(match[1]) : 0;
+    }
+
+    function applyServerAccount(data) {
+        const user = data.user || {};
+        const completed = Array.isArray(user.completedActivities) ? user.completedActivities.map(Number) : [];
+        currentUser = {
+            name: user.name,
+            age: user.age,
+            email: user.email,
+            language: user.language || 'en',
+            fontSize: user.fontSize || 'medium',
+            joinedDate: user.joinedDate,
+            completedActivities: completed,
+            userId: user.id
+        };
+        localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
+        if (data.consentSigned) {
+            localStorage.setItem('consentSigned_' + user.name, 'true');
+        }
+        (data.activities || []).forEach(function (activity) {
+            localStorage.setItem(
+                'activity_' + activity.id + '_responses_' + user.name,
+                JSON.stringify(activity.responses || {})
+            );
+        });
+        if (data.drawingDataUrl) {
+            localStorage.setItem('animalDrawing_' + user.name, data.drawingDataUrl);
+        }
+        if (data.puzzleProgress != null) {
+            localStorage.setItem('puzzleProgress_' + user.name, String(data.puzzleProgress));
+        }
+        const check = data.creativityCheck || {};
+        if (check.pre || check.post) {
+            localStorage.setItem('autRecord_' + String(user.email || '').toLowerCase(), JSON.stringify({
+                pre: check.pre || null,
+                post: check.post || null
+            }));
+        }
+        window.myAccountCache = data;
+    }
+
+    async function openReturningAccount(name, email) {
+        const data = await postJson('/api/public/my-account', { name: name, email: email });
+        applyServerAccount(data);
+        updateLanguage(currentUser.language || 'en');
+        updateFontSize(currentUser.fontSize || 'medium');
+        if (data.consentSigned) {
+            showDashboard();
+        } else {
+            showConsentForm();
         }
     }
 
@@ -2799,6 +2891,25 @@ const puzzleImages = {
                 "請填寫所有欄位。");
             return;
         }
+
+        try {
+            await openReturningAccount(name, email);
+            return;
+        } catch (error) {
+            const status = requestStatus(error);
+            if (status === 401) {
+                alert(currentLanguage === 'en'
+                    ? "That email is already used with a different name. Please sign in with the same name and email."
+                    : "這個電郵已用另一個名字登記。請用相同的名字和電郵登入。");
+                return;
+            }
+            if (status !== 404 && status !== 0) {
+                alert(currentLanguage === 'en'
+                    ? "The saved account could not be opened. Please try again."
+                    : "未能開啟已保存的帳戶，請再試一次。");
+                return;
+            }
+        }
         
         currentUser = {
             name,
@@ -2830,6 +2941,25 @@ const puzzleImages = {
                 "Please enter name and email to sign in." : 
                 "請輸入姓名和電子郵件以登入。");
             return;
+        }
+
+        try {
+            await openReturningAccount(name, email);
+            return;
+        } catch (error) {
+            const status = requestStatus(error);
+            if (status === 401) {
+                alert(currentLanguage === 'en'
+                    ? "Please use the same name and email you signed up with."
+                    : "請使用註冊時的名字和電郵。");
+                return;
+            }
+            if (status === 404) {
+                alert(currentLanguage === 'en'
+                    ? "No saved account was found. Please fill in your age and language, then press the sign-up button."
+                    : "找不到已保存的帳戶。請填寫年齡和語言，然後按註冊。");
+                return;
+            }
         }
         
         const savedUser = localStorage.getItem('creativityCornerUser');
@@ -3181,6 +3311,7 @@ function checkIfCanvasIsEmpty(canvas) {
             "確定要登出嗎？")) {
             
             currentUser = null;
+            localStorage.removeItem('creativityCornerUser');
             
             activities.forEach((activity, index) => {
                 if (index > 0) {
@@ -3211,6 +3342,8 @@ function hideAllSections() {
     dashboardSection.style.display = 'none';
     instructionSection.style.display = 'none';
     activityContent.style.display = 'none';
+    const myWorkSection = document.getElementById('myWorkSection');
+    if (myWorkSection) myWorkSection.style.display = 'none';
     
     // Add this line to hide admin dashboard
     if (adminDashboardSection) {
@@ -3973,12 +4106,14 @@ function setupSequentialInput() {
                     if (document.getElementById(`solution${i}`)) {
                         document.getElementById(`solution${i}`).value = responses[`solution${i}`] || '';
                     }
+                    if (typeof updateSolutionBox === 'function') updateSolutionBox(i);
                 }
                 for (let i = 1; i <= 4; i++) {
                     if (document.getElementById(`category${i}-solutions`)) {
                         document.getElementById(`category${i}-solutions`).value = responses[`category${i}`] || '';
                     }
                 }
+                if (typeof showSavedSortChips === 'function') showSavedSortChips();
                 break;
         }
     }
@@ -4716,6 +4851,39 @@ function updateCategorySolutions(categoryNum) {
     }
 }
 
+function showSavedSortChips() {
+    for (let categoryNum = 1; categoryNum <= 4; categoryNum++) {
+        const hidden = document.getElementById('category' + categoryNum + '-solutions');
+        const zone = document.getElementById('dropzone' + categoryNum);
+        if (!hidden || !zone || !hidden.value) continue;
+        let items = [];
+        try {
+            items = JSON.parse(hidden.value);
+        } catch (error) {
+            items = [];
+        }
+        if (!Array.isArray(items) || !items.length) continue;
+        zone.querySelectorAll('.solution-chip').forEach(function (chip) { chip.remove(); });
+        items.forEach(function (item) {
+            const solutionNumber = parseInt(String(item.id || '').replace(/\D/g, ''), 10);
+            const text = item && item.text ? item.text : '';
+            if (!solutionNumber || !text) return;
+            const color = getSolutionColor(solutionNumber);
+            const chip = document.createElement('div');
+            chip.className = 'solution-chip';
+            chip.dataset.solutionNumber = String(solutionNumber);
+            chip.dataset.solutionId = 'solution' + solutionNumber;
+            chip.dataset.fullText = text;
+            chip.style.cssText = 'background-color:' + color + ';color:white;padding:12px 15px;border-radius:10px;margin:8px 0;display:flex;align-items:center;gap:10px;';
+            chip.textContent = solutionNumber + '. ' + (text.length > 40 ? text.slice(0, 40) + '...' : text);
+            zone.appendChild(chip);
+        });
+        const instructionText = zone.querySelector('p');
+        if (instructionText) instructionText.style.display = 'none';
+        updateCategorySolutions(categoryNum);
+    }
+}
+
 function getCategoryColor(categoryNum) {
     const colors = {
         '1': '#FF6B8B',
@@ -4985,10 +5153,7 @@ const userDrawing = document.getElementById('userDrawing');
 // Check if elements exist before adding event listeners
 if (adminLoginBtn) {
     adminLoginBtn.addEventListener('click', function() {
-        adminLoginModal.style.display = 'block';
-        adminUsername.value = '';
-        adminPassword.value = '';
-        adminLoginError.textContent = '';
+        window.location.href = 'admin.html';
     });
 }
 
@@ -5410,6 +5575,160 @@ function loadActivityResponsesForAdmin(user, activityId) {
 }
 
 // Modify the existing hideAllSections function to include admin dashboard
+function escapeWorkText(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function workCard(titleEn, titleZh, body) {
+    return '<div class="my-work-card"><h3 class="lang-en">' + titleEn + '</h3><h3 class="lang-zh">' + titleZh + '</h3>' +
+        '<div class="lang-en">' + body + '</div><div class="lang-zh">' + body + '</div></div>';
+}
+
+function savedOrEmpty(lines) {
+    const filled = lines.filter(function (line) { return String(line[1] || '').trim(); });
+    if (!filled.length) return '<p class="my-work-empty">Not saved yet. 尚未保存。</p>';
+    return filled.map(function (line) {
+        return '<p class="my-work-line"><strong>' + escapeWorkText(line[0]) + '</strong> ' + escapeWorkText(line[1]) + '</p>';
+    }).join('');
+}
+
+function sortBoxText(raw) {
+    let items = raw;
+    if (typeof raw === 'string') {
+        try { items = JSON.parse(raw || '[]'); } catch (error) { items = []; }
+    }
+    if (!Array.isArray(items)) return '';
+    return items.map(function (item) {
+        if (typeof item === 'string') return item;
+        return item && item.text ? item.text : '';
+    }).filter(Boolean).join(', ');
+}
+
+function renderCheckWork(titleEn, titleZh, phase) {
+    if (!phase || !phase.answers) {
+        return workCard(titleEn, titleZh, '<p class="my-work-empty">Not saved yet. 尚未保存。</p>');
+    }
+    const result = phase.result || {};
+    let body = '<p class="my-work-line"><strong>Total creativity score 創意總分:</strong> ' + escapeWorkText(result.total) + '</p>' +
+        '<p class="my-work-line">Fluency 流暢力: ' + escapeWorkText(result.fluency) + '</p>' +
+        '<p class="my-work-line">Flexibility 變通力: ' + escapeWorkText(result.flexibility) + '</p>';
+    const names = {
+        book: 'Book 書',
+        sticky: 'Sticky Note 便利貼',
+        brick: 'Brick 磚',
+        newspaper: 'Newspaper 報紙'
+    };
+    Object.keys(phase.answers).forEach(function (key) {
+        const lines = (phase.answers[key] || []).map(function (line, index) {
+            return escapeWorkText((index + 1) + '. ' + (line || '—'));
+        }).join('<br>');
+        body += '<p class="my-work-line"><strong>' + escapeWorkText(names[key] || key) + '</strong><br>' + lines + '</p>';
+    });
+    return workCard(titleEn, titleZh, body);
+}
+
+function accountFromLocal() {
+    const activities = [];
+    if (currentUser) {
+        for (let id = 1; id <= 5; id++) {
+            const raw = localStorage.getItem('activity_' + id + '_responses_' + currentUser.name);
+            if (!raw) continue;
+            try {
+                activities.push({ id: id, responses: JSON.parse(raw) });
+            } catch (error) {
+                // Skip a damaged saved answer.
+            }
+        }
+    }
+    let check = {};
+    try {
+        check = JSON.parse(localStorage.getItem('autRecord_' + String((currentUser && currentUser.email) || '').toLowerCase()) || '{}');
+    } catch (error) {
+        check = {};
+    }
+    return {
+        user: currentUser || {},
+        drawingDataUrl: currentUser ? (localStorage.getItem('animalDrawing_' + currentUser.name) || '') : '',
+        activities: activities,
+        creativityCheck: { pre: check.pre || null, post: check.post || null }
+    };
+}
+
+function renderMyWork(data) {
+    const user = (data && data.user) || {};
+    const byId = {};
+    ((data && data.activities) || []).forEach(function (activity) {
+        byId[activity.id] = activity.responses || {};
+    });
+    const animal = byId[1] || {};
+    const whatIf = byId[2] || {};
+    const words = byId[3] || {};
+    const penguin = byId[4] || {};
+    const brainstorm = byId[5] || {};
+    const drawing = data && typeof data.drawingDataUrl === 'string' && data.drawingDataUrl.indexOf('data:image') === 0
+        ? '<img class="scenario-photo" alt="Saved drawing" src="' + data.drawingDataUrl + '">'
+        : '<p class="my-work-empty">No drawing saved yet. 尚未保存圖畫。</p>';
+    const check = (data && data.creativityCheck) || {};
+    return workCard('My information', '我的資料', savedOrEmpty([
+        ['Name 名字', user.name || ''],
+        ['Age 年齡', user.age || ''],
+        ['Email 電郵', user.email || '']
+    ])) +
+        renderCheckWork('Creativity check before training', '訓練前創意測試', check.pre) +
+        workCard('1. Transformation of Animals', '1. 動物變身', drawing + savedOrEmpty([
+            ['Animal name 動物名字', animal.animalName || ''],
+            ['Description 描述', animal.animalDescription || '']
+        ])) +
+        workCard('2. What If...?', '2. 如果……', savedOrEmpty([1, 2, 3, 4, 5, 6].map(function (n) {
+            return ['Result ' + n + ' 結果 ' + n, whatIf['Result' + n] || ''];
+        }))) +
+        workCard('3. Word Association', '3. 詞語聯想', savedOrEmpty([1, 2, 3, 4, 5].map(function (n) {
+            return ['Word ' + n + ' 詞語 ' + n, words['word' + n] || ''];
+        }).concat([['Story 故事', words.wordStory || '']]))) +
+        workCard('4. Penguin in the Desert', '4. 沙漠中的企鵝', savedOrEmpty([1, 2, 3, 4, 5].map(function (n) {
+            return ['Idea ' + n + ' 想法 ' + n, penguin['idea' + n] || ''];
+        }))) +
+        workCard('5. Brainstorming', '5. 集思廣益', savedOrEmpty([
+            ['Solution 1 解決方案 1', brainstorm.solution1 || ''],
+            ['Solution 2 解決方案 2', brainstorm.solution2 || ''],
+            ['Solution 3 解決方案 3', brainstorm.solution3 || ''],
+            ['Solution 4 解決方案 4', brainstorm.solution4 || ''],
+            ['Things we can do right now 我們現在就能做到的', sortBoxText(brainstorm.category1)],
+            ['Things we can do, but need help 我們能做，但需要別人幫忙', sortBoxText(brainstorm.category2)],
+            ['Hard to do 有點難做到', sortBoxText(brainstorm.category3)],
+            ['Fun ideas but not really helpful 有趣但跟問題不太有關', sortBoxText(brainstorm.category4)]
+        ])) +
+        renderCheckWork('Creativity check after training', '訓練後創意測試', check.post);
+}
+
+async function showMyWork() {
+    if (!currentUser) return;
+    hideAllSections();
+    const section = document.getElementById('myWorkSection');
+    const mount = document.getElementById('myWorkContent');
+    if (!section || !mount) return;
+    section.style.display = 'block';
+    if (logoutBtn) logoutBtn.style.display = 'flex';
+    mount.innerHTML = '<p class="lang-en">Loading your saved work...</p><p class="lang-zh">正在讀取已保存的作品...</p>';
+    if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
+    let data = window.myAccountCache || accountFromLocal();
+    try {
+        data = await postJson('/api/public/my-account', {
+            name: currentUser.name,
+            email: currentUser.email
+        });
+        applyServerAccount(data);
+    } catch (error) {
+        if (!data) data = accountFromLocal();
+    }
+    mount.innerHTML = renderMyWork(data);
+    if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
+}
+
 // Find your hideAllSections function and update it
 function hideAllSections() {
     authSection.style.display = 'none';
@@ -5417,6 +5736,8 @@ function hideAllSections() {
     dashboardSection.style.display = 'none';
     instructionSection.style.display = 'none';
     activityContent.style.display = 'none';
+    const myWorkSection = document.getElementById('myWorkSection');
+    if (myWorkSection) myWorkSection.style.display = 'none';
     
     // Add this line
     if (adminDashboardSection) {
