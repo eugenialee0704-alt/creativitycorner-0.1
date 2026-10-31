@@ -425,7 +425,7 @@
         try {
             const userId = userEmail() || 'participant';
             try {
-                const localResponse = await fetch('/api/public/aut-rate', {
+                const localResponse = await fetch(apiUrl('/api/public/aut-rate'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     signal: controller.signal,

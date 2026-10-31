@@ -28,7 +28,7 @@ DIFY_WEB_API = "https://udify.app/api"
 RECORDS_PATH = os.path.join(DATA_DIR, "records.json")
 
 ADMIN_USERNAME = "CreativityCorner"
-ADMIN_PASSWORD = "CreativityCorner2026"
+ADMIN_PASSWORD_PATH = os.path.join(DATA_DIR, "admin-password.txt")
 
 SORT_BOXES = {
     "1": "Things we can do right now",
@@ -43,6 +43,22 @@ AUT_OBJECTS = {
     "brick": "Brick",
     "newspaper": "Newspaper",
 }
+
+
+def admin_password():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        with open(ADMIN_PASSWORD_PATH, encoding="utf-8") as handle:
+            saved = handle.read().strip()
+        if saved:
+            return saved
+    except OSError:
+        pass
+    import secrets
+    created = secrets.token_urlsafe(12)
+    with open(ADMIN_PASSWORD_PATH, "w", encoding="utf-8") as handle:
+        handle.write(created + "\n")
+    return created
 
 
 def now_iso():
@@ -623,8 +639,18 @@ class RecordHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=ROOT, **kwargs)
 
     def end_headers(self):
+        origin = self.headers.get("Origin") or ""
+        if origin == "https://eugenialee0704-alt.github.io":
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -674,7 +700,7 @@ class RecordHandler(SimpleHTTPRequestHandler):
             self.send_json(401, {"error": "Login required"})
             return False
         username, separator, password = decoded.partition(":")
-        if not separator or username != ADMIN_USERNAME or password != ADMIN_PASSWORD:
+        if not separator or username != ADMIN_USERNAME or password != admin_password():
             self.send_json(401, {"error": "Invalid username or password"})
             return False
         return True

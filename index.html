@@ -2208,6 +2208,7 @@
         </div>
     </footer>
     
+<script src="api-config.js"></script>
 <script>
     // User data and application state
     let currentUser = null;
@@ -2587,7 +2588,7 @@ const puzzleImages = {
 
     // Backend sync helpers (optional: site still works if server isn't running)
     async function postJson(path, body) {
-        const res = await fetch(path, {
+        const res = await fetch(apiUrl(path), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -5107,10 +5108,6 @@ function dragLeave(event) {
 
 // ============ ADMIN FUNCTIONALITY ============
 
-// Admin credentials (used by the backend Basic Auth)
-const ADMIN_USERNAME = "CreativityCorner";
-const ADMIN_PASSWORD = "CreativityCorner2026";
-
 // Admin state
 let isAdminLoggedIn = false;
 let selectedUserForAdmin = null;
@@ -5119,7 +5116,7 @@ let adminAuthHeader = sessionStorage.getItem('cc_admin_auth') || null;
 async function adminFetchJson(path, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     if (adminAuthHeader) headers['Authorization'] = adminAuthHeader;
-    const res = await fetch(path, Object.assign({}, options, { headers }));
+    const res = await fetch(apiUrl(path), Object.assign({}, options, { headers }));
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Admin request failed: ${res.status} ${text}`);

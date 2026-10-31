@@ -124,6 +124,7 @@
             </div>
         </section>
     </main>
+    <script src="api-config.js"></script>
     <script>
         let language = 'en';
         let authHeader = sessionStorage.getItem('cc_admin_auth') || '';
@@ -147,7 +148,7 @@
         }
 
         async function adminGet(path) {
-            const response = await fetch(path, { headers: { Authorization: authHeader } });
+            const response = await fetch(apiUrl(path), { headers: { Authorization: authHeader } });
             if (!response.ok) throw new Error(String(response.status));
             return response.json();
         }
