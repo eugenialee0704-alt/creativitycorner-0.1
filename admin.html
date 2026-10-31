@@ -321,9 +321,14 @@
             } catch (error) {
                 authHeader = '';
                 sessionStorage.removeItem('cc_admin_auth');
-                document.getElementById('loginError').textContent = language === 'en'
-                    ? 'That username or password is not correct.'
-                    : '用戶名或密碼不正確。';
+                const status = Number(error && error.message);
+                document.getElementById('loginError').textContent = status === 401
+                    ? (language === 'en'
+                        ? 'That username or password is not correct.'
+                        : '用戶名或密碼不正確。')
+                    : (language === 'en'
+                        ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
+                        : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。');
             }
         }
 
