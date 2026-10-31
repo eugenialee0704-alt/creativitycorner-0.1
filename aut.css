@@ -35,6 +35,57 @@
     margin-bottom: 18px;
 }
 
+.aut-main-use {
+    color: #8a6500;
+    font-weight: 700;
+    margin: 4px 0 8px;
+}
+
+.aut-example {
+    background: #fffdf6;
+    border: 2px solid #f0d56a;
+    border-radius: 18px;
+    padding: 18px;
+    margin: 16px 0;
+}
+
+.aut-timer {
+    position: sticky;
+    top: 12px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #fff6bf;
+    border: 2px solid #f0d56a;
+    border-radius: 16px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+}
+
+.aut-timer span {
+    font-weight: 700;
+    color: #8a6500;
+}
+
+.aut-timer-clock {
+    font-family: 'Comic Neue', cursive;
+    font-size: 2.2rem;
+    color: #8a6500;
+    line-height: 1;
+}
+
+.aut-timer.urgent {
+    background: #ffe1e1;
+    border-color: #e07a7a;
+}
+
+.aut-timer.urgent span,
+.aut-timer.urgent .aut-timer-clock {
+    color: #a32020;
+}
+
 .aut-actions {
     display: flex;
     flex-wrap: wrap;

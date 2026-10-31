@@ -17,6 +17,15 @@
     };
 
     const ICONS = { book: '📖', sticky: '📝', brick: '🧱', newspaper: '📰' };
+    const TEST_SECONDS = 180;
+    const MAIN_USE_LABELS = {
+        book: { en: 'Reading', zh: '閱讀' },
+        sticky: { en: 'Taking notes', zh: '寫筆記' },
+        brick: { en: 'Building', zh: '建築' },
+        newspaper: { en: 'Reading the news', zh: '看新聞' }
+    };
+    let timerId = null;
+    let submitLock = false;
 
     function scoreApi() {
         return window.AutScore;
@@ -212,8 +221,98 @@
         if (typeof logoutBtn !== 'undefined' && logoutBtn) logoutBtn.style.display = 'flex';
         const saved = loadRecord()[phase];
         if (saved && saved.result) renderArchive(phase);
-        else renderForm(phase);
+        else renderInstructions(phase);
         window.scrollTo(0, 0);
+    }
+
+    function stopTimer() {
+        if (timerId) {
+            clearInterval(timerId);
+            timerId = null;
+        }
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remain = seconds % 60;
+        return minutes + ':' + (remain < 10 ? '0' : '') + remain;
+    }
+
+    function renderInstructions(phase) {
+        stopTimer();
+        submitLock = false;
+        const objects = scoreApi().OBJECTS[phase];
+        document.getElementById('autStage').innerHTML =
+            '<div class="aut-panel"><button class="back-button" id="autBack" type="button"><i class="fas fa-arrow-left"></i></button>' +
+            langPair('<h3>Creativity check instructions</h3>', '<h3>創意測試說明</h3>') +
+            langPair(
+                '<div class="aut-lead">Please list up to six alternative uses for each object. You will have three minutes to complete the two items. The primary use of each object is provided below. You must not list the primary use as an alternative use.</div>',
+                '<div class="aut-lead">請為每個物品列出最多六種其他用途。參加者有三分鐘的時間完成兩個物品。每項物品的主要用途已列出，不得將主要用途寫作其他用途。</div>'
+            ) +
+            objects.map(function (object) {
+                const mainUse = MAIN_USE_LABELS[object.id] || { en: '', zh: '' };
+                return langPair(
+                    '<p><strong>Object: ' + esc(object.en) + '</strong><br>(Main use: ' + esc(mainUse.en) + ')</p>',
+                    '<p><strong>物品：' + esc(object.zh) + '</strong><br>（主要用途：' + esc(mainUse.zh) + '）</p>'
+                );
+            }).join('') +
+            langPair(
+                '<p class="aut-note">The three minutes start when you press the button. They do not start while you are reading this page.</p>',
+                '<p class="aut-note">按下按鈕後才開始三分鐘計時。閱讀本頁時不會計時。</p>'
+            ) +
+            '<section class="aut-example">' +
+            langPair('<h3>Example</h3>', '<h3>例子</h3>') +
+            langPair('<p><strong>Object: Water Bottle</strong></p>', '<p><strong>物品：水樽</strong></p>') +
+            langPair(
+                '<p class="aut-main-use">(Main use: Carry and store water or drinks)</p>',
+                '<p class="aut-main-use">（主要用途：儲存和隨身攜帶飲用水或其他飲料）</p>'
+            ) +
+            '<img class="scenario-photo" src="images/water-bottle.jpg" alt="Water bottle">' +
+            langPair(
+                '<p>Alternative use can be a snack box.</p>',
+                '<p>其他用途可為零食盒。</p>'
+            ) +
+            '</section>' +
+            '<div class="aut-actions"><button class="btn btn-primary" id="autBeginBtn" type="button"><i class="fas fa-hourglass-start"></i> ' +
+            langPair('Start the three minutes', '開始三分鐘計時') + '</button></div></div>';
+        document.getElementById('autBack').addEventListener('click', function () {
+            stopTimer();
+            if (typeof showDashboard === 'function') showDashboard();
+        });
+        document.getElementById('autBeginBtn').addEventListener('click', function () { renderForm(phase); });
+        applyLang();
+    }
+
+    function timerKey(phase) {
+        return 'autTimer_' + userEmail() + '_' + phase;
+    }
+
+    function startTimer(phase) {
+        stopTimer();
+        const timer = document.getElementById('autTimer');
+        if (!timer) return;
+        const stored = Number(sessionStorage.getItem(timerKey(phase)) || 0);
+        const deadline = stored > 0 ? stored : Date.now() + TEST_SECONDS * 1000;
+        sessionStorage.setItem(timerKey(phase), String(deadline));
+        timer.dataset.deadline = String(deadline);
+        function tick() {
+            const node = document.getElementById('autTimer');
+            if (!node) {
+                stopTimer();
+                return;
+            }
+            const end = Number(node.dataset.deadline || deadline);
+            const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+            const clock = node.querySelector('.aut-timer-clock');
+            if (clock) clock.textContent = formatTime(left);
+            node.classList.toggle('urgent', left <= 30 && left > 0);
+            if (left <= 0) {
+                stopTimer();
+                submitAut(phase, true);
+            }
+        }
+        tick();
+        timerId = setInterval(tick, 250);
     }
 
     function renderForm(phase) {
@@ -239,26 +338,33 @@
                     '</div>'
                 );
             }
+            const mainUse = MAIN_USE_LABELS[object.id] || { en: '', zh: '' };
             return '<section class="aut-object"><div class="aut-object-title"><div class="aut-object-badge">' + ICONS[object.id] + '</div><div>' +
                 langPair('<h3>Object: ' + esc(object.en) + '</h3>', '<h3>物件：' + esc(object.zh) + '</h3>') +
-                langPair('<p class="aut-note">Up to 6 uses. Empty boxes are allowed.</p>', '<p class="aut-note">最多 6 個用途。空白的格子可以留空。</p>') +
+                langPair('<p class="aut-main-use">(Main use: ' + esc(mainUse.en) + ')</p>', '<p class="aut-main-use">（主要用途：' + esc(mainUse.zh) + '）</p>') +
+                langPair('<p class="aut-note">Up to 6 uses. Do not write the main use. Empty boxes are allowed.</p>', '<p class="aut-note">最多 6 個用途。不要寫主要用途。空白的格子可以留空。</p>') +
                 '</div></div>' + rows.join('') + '</section>';
         }).join('');
         document.getElementById('autStage').innerHTML =
             '<div class="aut-panel"><button class="back-button" id="autBack" type="button"><i class="fas fa-arrow-left"></i></button>' +
+            '<div class="aut-timer" id="autTimer" role="timer">' +
+            langPair('<span>Time left</span>', '<span>剩餘時間</span>') +
+            '<strong class="aut-timer-clock">3:00</strong></div>' +
             langPair('<h3>' + (phase === 'pre' ? 'Creativity check: before training' : 'Creativity check: after training') + '</h3>',
                 '<h3>' + (phase === 'pre' ? '創意測試：訓練前' : '創意測試：訓練後') + '</h3>') +
             intro + blocks +
             '<div class="aut-actions"><button class="btn btn-primary" id="autSubmitBtn" type="button"><i class="fas fa-paper-plane"></i> ' +
             langPair('Submit answers', '提交答案') + '</button></div></div>';
         document.getElementById('autBack').addEventListener('click', function () {
+            stopTimer();
             if (typeof showDashboard === 'function') showDashboard();
         });
         document.getElementById('autStage').querySelectorAll('input').forEach(function (input) {
             input.addEventListener('input', function () { saveDraft(phase); });
         });
-        document.getElementById('autSubmitBtn').addEventListener('click', function () { submitAut(phase); });
+        document.getElementById('autSubmitBtn').addEventListener('click', function () { submitAut(phase, false); });
         applyLang();
+        startTimer(phase);
     }
 
     function collectAnswers(phase) {
@@ -406,14 +512,23 @@
         return result;
     }
 
-    async function submitAut(phase) {
+    async function submitAut(phase, automatic) {
+        if (submitLock) return;
         const button = document.getElementById('autSubmitBtn');
         const answers = collectAnswers(phase);
         if (!hasAnyAnswer(answers)) {
+            if (automatic) {
+                stopTimer();
+                alert(currentLanguage === 'zh' ? '時間到了。請至少寫下一個想法，然後按提交。' : 'Time is up. Write at least one idea, then press Submit.');
+                return;
+            }
             alert(currentLanguage === 'zh' ? '請至少寫下一個想法。空白的格子可以留空。' : 'Write at least one idea. Empty boxes are okay.');
             return;
         }
+        submitLock = true;
+        stopTimer();
         if (button) button.disabled = true;
+        document.querySelectorAll('#autStage input').forEach(function (input) { input.disabled = true; });
         document.getElementById('autStage').insertAdjacentHTML('beforeend',
             '<div class="aut-checking" id="autChecking">' +
             langPair('The creativity check is reading your ideas...', '創意測試正在閱讀你的想法...') +
@@ -431,6 +546,7 @@
         };
         saveRecord(record);
         localStorage.removeItem(draftKey(phase));
+        sessionStorage.removeItem(timerKey(phase));
         syncAut(record[phase]);
         renderArchive(phase);
     }
@@ -662,6 +778,7 @@
 
         const originalHide = hideAllSections;
         hideAllSections = function () {
+            stopTimer();
             originalHide();
             const section = document.getElementById('autSection');
             if (section) section.style.display = 'none';
