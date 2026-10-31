@@ -1318,12 +1318,16 @@
 }
 
 .draggable-box {
-    transition: all 0.3s ease;
+    -webkit-user-drag: element;
     user-select: none;
 }
 
+.draggable-box * {
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
 .draggable-box:hover {
-    transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
@@ -3488,6 +3492,10 @@ function hideAllSections() {
         submitActivityBtn.onclick = submitActivity;
         
         updateLanguageVisibility();
+
+        if (activityId === 5 && typeof initBrainstormingDragDrop === 'function') {
+            initBrainstormingDragDrop();
+        }
         
         if (activityId === 1) {
             setTimeout(() => {
@@ -4466,8 +4474,8 @@ function setupSequentialInput() {
                 
                 <h4 class="lang-en" style="margin-top: 30px;">Step 2: Sort out Your Solutions and Put into the boxes</h4>
                 <h4 class="lang-zh" style="margin-top: 30px;">第二步：分類你的解決方案，並放入方框中。</h4>
-                <p class="lang-en">Drag your solutions from Step 1 into the boxes (You can put more than one solution in the same categories):</p>
-                <p class="lang-zh">將第一步的解決方案拖放到類別中（你可以在相同的分類中放入多於一個解決方案）：</p>
+                <p class="lang-en">Drag your solutions from Step 1 into the boxes. Each solution can go into only one box.</p>
+                <p class="lang-zh">將第一步的解決方案拖放到類別中。每個解決方案只能放入一個類別。</p>
                 
                 <div class="categories-container">
     <h4 class="lang-en">Sort your solutions into these boxes:</h4>
@@ -4694,8 +4702,8 @@ function updateCategorySolutions(categoryNum) {
     
     const solutions = Array.from(chips).map(chip => {
         return {
-            id: chip.dataset.solutionId,
-            text: chip.textContent.replace(' ×', '')
+            id: chip.dataset.solutionId || chip.dataset.solutionNumber,
+            text: chip.dataset.fullText || chip.textContent.replace(' ×', '')
         };
     });
     
@@ -4720,25 +4728,15 @@ function getCategoryColor(categoryNum) {
 
 // Initialize drag and drop when activity loads
 function initBrainstormingDragDrop() {
-    // Make solution boxes draggable
-    const solutionBoxes = document.querySelectorAll('.solution-input');
-    solutionBoxes.forEach(box => {
-        box.addEventListener('dragstart', dragSolution);
+    document.querySelectorAll('.draggable-box').forEach(function (box) {
+        if (box.dataset.dragReady === 'yes') return;
+        box.dataset.dragReady = 'yes';
         box.setAttribute('draggable', 'true');
-        
-        // Add drag indicator
-        const parentDiv = box.closest('.solution-item');
-        if (parentDiv) {
-            const dragIcon = document.createElement('div');
-            dragIcon.innerHTML = '<i class="fas fa-arrows-alt" style="color: #999; font-size: 0.8rem; margin-top: 5px; cursor: move;"></i>';
-            dragIcon.style.textAlign = 'center';
-            parentDiv.appendChild(dragIcon);
-        }
+        box.addEventListener('dragend', function () {
+            box.classList.remove('dragging');
+        });
     });
-    
-    // Add dragleave event to dropzones
-    const dropzones = document.querySelectorAll('.mindmap-dropzone');
-    dropzones.forEach(zone => {
+    document.querySelectorAll('.mindmap-dropzone').forEach(function (zone) {
         zone.addEventListener('dragleave', dragLeave);
     });
 }
@@ -4773,27 +4771,19 @@ function updateSolutionBox(solutionNumber) {
 
 // Function to drag the solution box
 function dragSolutionBox(event, solutionNumber) {
-    const textarea = document.getElementById(`solution${solutionNumber}`);
-    const text = textarea.value.trim();
-    
+    const textarea = document.getElementById('solution' + solutionNumber);
+    const text = textarea ? textarea.value.trim() : '';
     if (!text) {
-        alert(currentLanguage === 'en' 
-            ? `Please type something in Solution ${solutionNumber} first!` 
-            : `請先在解決方案 ${solutionNumber} 中輸入內容！`);
         event.preventDefault();
         return;
     }
-    
-    // Store the data to transfer
-    event.dataTransfer.setData("text/plain", JSON.stringify({
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify({
         solutionNumber: solutionNumber,
         text: text,
         color: getSolutionColor(solutionNumber)
     }));
-    
-    // Visual feedback
-    event.currentTarget.style.opacity = '0.5';
-    event.currentTarget.style.transform = 'scale(0.95)';
+    event.currentTarget.classList.add('dragging');
 }
 
 // Function to get color for each solution
@@ -4817,13 +4807,24 @@ function dropSolution(event) {
         const data = JSON.parse(event.dataTransfer.getData("text/plain"));
         const solutionNumber = data.solutionNumber;
         const text = data.text;
-        const color = data.color;
+        const color = data.color || getSolutionColor(solutionNumber);
         const categoryId = event.currentTarget.id;
         const categoryNum = categoryId.replace('dropzone', '');
+        if (!solutionNumber || !text) return;
+
+        document.querySelectorAll('.solution-chip').forEach(function (existing) {
+            if (String(existing.dataset.solutionNumber) !== String(solutionNumber)) return;
+            const oldZone = existing.closest('.mindmap-dropzone');
+            existing.remove();
+            if (oldZone) updateCategorySolutions(oldZone.id.replace('dropzone', ''));
+        });
         
         // Create a chip for the solution
         const chip = document.createElement('div');
         chip.className = 'solution-chip';
+        chip.dataset.solutionNumber = String(solutionNumber);
+        chip.dataset.solutionId = 'solution' + solutionNumber;
+        chip.dataset.fullText = text;
         chip.style.cssText = `
             background-color: ${color};
             color: white;
@@ -4912,10 +4913,7 @@ function dropSolution(event) {
         
         // Reset dragging style
         const draggedBox = document.getElementById(`draggable-solution${solutionNumber}`);
-        if (draggedBox) {
-            draggedBox.style.opacity = '1';
-            draggedBox.style.transform = 'scale(1)';
-        }
+        if (draggedBox) draggedBox.classList.remove('dragging');
         
     } catch (error) {
         console.error('Error in dropSolution:', error);

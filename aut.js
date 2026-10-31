@@ -241,7 +241,6 @@
     function renderInstructions(phase) {
         stopTimer();
         submitLock = false;
-        const objects = scoreApi().OBJECTS[phase];
         document.getElementById('autStage').innerHTML =
             '<div class="aut-panel"><button class="back-button" id="autBack" type="button"><i class="fas fa-arrow-left"></i></button>' +
             langPair('<h3>Creativity check instructions</h3>', '<h3>創意測試說明</h3>') +
@@ -249,13 +248,6 @@
                 '<div class="aut-lead">Please list up to six alternative uses for each object. You will have three minutes to complete the two items. The primary use of each object is provided below. You must not list the primary use as an alternative use.</div>',
                 '<div class="aut-lead">請為每個物品列出最多六種其他用途。參加者有三分鐘的時間完成兩個物品。每項物品的主要用途已列出，不得將主要用途寫作其他用途。</div>'
             ) +
-            objects.map(function (object) {
-                const mainUse = MAIN_USE_LABELS[object.id] || { en: '', zh: '' };
-                return langPair(
-                    '<p><strong>Object: ' + esc(object.en) + '</strong><br>(Main use: ' + esc(mainUse.en) + ')</p>',
-                    '<p><strong>物品：' + esc(object.zh) + '</strong><br>（主要用途：' + esc(mainUse.zh) + '）</p>'
-                );
-            }).join('') +
             langPair(
                 '<p class="aut-note">The three minutes start when you press the button. They do not start while you are reading this page.</p>',
                 '<p class="aut-note">按下按鈕後才開始三分鐘計時。閱讀本頁時不會計時。</p>'
