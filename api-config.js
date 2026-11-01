@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://relaxation-color-gold-ordinary.trycloudflare.com";
+window.CREATIVITY_API = "https://charm-logged-demand-manufacturing.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
