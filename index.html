@@ -1787,7 +1787,7 @@
                 <div class="form-group signup-only">
                     <label for="age" class="lang-en">Your Age</label>
                     <label for="age" class="lang-zh">你的年齡</label>
-                    <input type="number" id="age" class="form-control" placeholder="Enter your age" min="5" max="12">
+                    <input type="number" id="age" class="form-control" placeholder="Enter your age">
                 </div>
                 
                 <div class="form-group signup-only">
@@ -3138,6 +3138,11 @@ const puzzleImages = {
             showAuthMessage(currentLanguage === 'en' ? 'Please fill in all fields.' : '請填寫所有欄位。', true);
             return;
         }
+        const ageNumber = Number(age);
+        if (!ageNumber || ageNumber < 5 || ageNumber > 13) {
+            showAuthMessage(currentLanguage === 'en' ? 'Please enter an age from 5 to 13.' : '請輸入 5 至 13 歲。', true);
+            return;
+        }
         if (password !== confirmPassword) {
             showAuthMessage(currentLanguage === 'en' ? 'The two passwords do not match.' : '兩次輸入的密碼不相同。', true);
             return;
@@ -3249,7 +3254,8 @@ function showConsentForm() {
     
     // Show consent section
     consentSection.style.display = 'block';
-    logoutBtn.style.display = 'flex';
+    if (logoutBtn) logoutBtn.style.display = 'flex';
+    consentSection.scrollIntoView({ block: 'start' });
     
     // Hide puzzle section
     const puzzleSection = document.getElementById('puzzleSection');
