@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://porcelain-grab-swap-document.trycloudflare.com";
+window.CREATIVITY_API = "https://constitutional-upload-incl-wearing.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
