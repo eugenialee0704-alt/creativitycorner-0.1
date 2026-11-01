@@ -226,6 +226,7 @@
             let html = '<h2>' + escapeText(user.name || 'Participant') + '</h2>';
             html += '<h3>Personal information</h3>';
             html += field('Name', user.name);
+            html += field('Username', user.username);
             html += field('Age', user.age);
             html += field('Email', user.email);
             html += field('Language', user.language === 'zh' ? '中文' : 'English');

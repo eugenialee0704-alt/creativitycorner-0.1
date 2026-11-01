@@ -1778,42 +1778,110 @@
             <p class="lang-zh" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">註冊開始你的創意之旅，享受有趣的活動！</p>
             
             <form class="auth-form" id="authForm">
-                <div class="form-group">
+                <div class="form-group signup-only">
                     <label for="name" class="lang-en">Your Name</label>
                     <label for="name" class="lang-zh">你的名字</label>
-                    <input type="text" id="name" class="form-control" placeholder="Enter your name" required>
+                    <input type="text" id="name" class="form-control" placeholder="Enter your name">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group signup-only">
                     <label for="age" class="lang-en">Your Age</label>
                     <label for="age" class="lang-zh">你的年齡</label>
-                    <input type="number" id="age" class="form-control" placeholder="Enter your age" min="5" max="12" required>
+                    <input type="number" id="age" class="form-control" placeholder="Enter your age" min="5" max="12">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group signup-only">
                     <label for="email" class="lang-en">Email Address</label>
                     <label for="email" class="lang-zh">電子郵件地址</label>
-                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group signup-only">
                     <label for="language" class="lang-en">Preferred Language</label>
                     <label for="language" class="lang-zh">首選語言</label>
-                    <select id="language" class="form-control" required>
+                    <select id="language" class="form-control">
                         <option value="en">English</option>
                         <option value="zh">中文</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label for="username" class="lang-en">Username</label>
+                    <label for="username" class="lang-zh">用戶名</label>
+                    <input type="text" id="username" class="form-control" autocomplete="username" placeholder="3 to 20 characters">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="lang-en">Password</label>
+                    <label for="password" class="lang-zh">密碼</label>
+                    <input type="password" id="password" class="form-control" autocomplete="current-password">
+                </div>
+
+                <div class="form-group signup-only">
+                    <label for="confirmPassword" class="lang-en">Confirm Password</label>
+                    <label for="confirmPassword" class="lang-zh">再輸入密碼</label>
+                    <input type="password" id="confirmPassword" class="form-control" autocomplete="new-password">
+                </div>
                 
                 <div class="auth-buttons">
-                    <button type="submit" class="btn btn-primary" id="signUpBtn">
+                    <button type="button" class="btn btn-primary" id="signUpBtn">
                         <i class="fas fa-user-plus"></i> <span class="lang-en">Sign Up</span><span class="lang-zh">註冊</span>
                     </button>
                     <button type="button" class="btn btn-secondary" id="signInBtn">
                         <i class="fas fa-sign-in-alt"></i> <span class="lang-en">Sign In</span><span class="lang-zh">登入</span>
                     </button>
                 </div>
+                <p id="authMessage" style="text-align:center; margin-top:16px; font-weight:700;"></p>
+                <p id="forgotWrap" style="display:none; text-align:center; margin-top:16px;">
+                    <button type="button" id="forgotBtn" style="background:none; border:none; color:var(--primary-color); font-weight:700; cursor:pointer;">
+                        <span class="lang-en">Forgot username or password?</span><span class="lang-zh">忘記用戶名或密碼？</span>
+                    </button>
+                </p>
             </form>
+            <div id="forgotBox" style="display:none;">
+                <p class="lang-en" style="text-align:center;">Enter the email you used when you signed up. We will send your username and a temporary password.</p>
+                <p class="lang-zh" style="text-align:center;">請輸入註冊時的電郵。我們會把用戶名和臨時密碼寄給你。</p>
+                <div class="form-group">
+                    <label for="forgotEmail" class="lang-en">Email Address</label>
+                    <label for="forgotEmail" class="lang-zh">電子郵件地址</label>
+                    <input type="email" id="forgotEmail" class="form-control" autocomplete="email">
+                </div>
+                <div class="auth-buttons">
+                    <button type="button" class="btn btn-primary" id="sendResetBtn">
+                        <span class="lang-en">Send email</span><span class="lang-zh">發送電郵</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="backToSignInBtn">
+                        <span class="lang-en">Back to sign in</span><span class="lang-zh">返回登入</span>
+                    </button>
+                </div>
+                <p id="forgotMessage" style="text-align:center; margin-top:12px;"></p>
+            </div>
+            <div id="newPasswordBox" style="display:none;">
+                <h2 class="lang-en">Choose a new password</h2>
+                <h2 class="lang-zh">設定新密碼</h2>
+                <p class="lang-en" style="text-align:center;">You can also change your username. Then sign in with the new ones next time.</p>
+                <p class="lang-zh" style="text-align:center;">你也可以更改用戶名。下次請用新的用戶名和密碼登入。</p>
+                <div class="form-group">
+                    <label for="newUsername" class="lang-en">Username</label>
+                    <label for="newUsername" class="lang-zh">用戶名</label>
+                    <input type="text" id="newUsername" class="form-control" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword" class="lang-en">New password</label>
+                    <label for="newPassword" class="lang-zh">新密碼</label>
+                    <input type="password" id="newPassword" class="form-control" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmNewPassword" class="lang-en">Confirm new password</label>
+                    <label for="confirmNewPassword" class="lang-zh">再輸入新密碼</label>
+                    <input type="password" id="confirmNewPassword" class="form-control" autocomplete="new-password">
+                </div>
+                <div class="auth-buttons">
+                    <button type="button" class="btn btn-primary" id="savePasswordBtn">
+                        <span class="lang-en">Save</span><span class="lang-zh">保存</span>
+                    </button>
+                </div>
+            </div>
         </section>
         
 <!-- Consent Form Section -->
@@ -1925,6 +1993,18 @@
     </div>
 </section>
         
+        <section class="dashboard-section" id="myWorkSection" style="display:none;">
+            <div class="auth-buttons" style="margin-bottom:16px;">
+                <button type="button" class="btn btn-secondary" id="backFromWorkBtn">
+                    <span class="lang-en">Back to activities</span><span class="lang-zh">返回活動</span>
+                </button>
+                <button type="button" class="btn btn-secondary" id="changeAccountBtn">
+                    <span class="lang-en">Change username or password</span><span class="lang-zh">更改用戶名或密碼</span>
+                </button>
+            </div>
+            <div id="myWorkContent"></div>
+        </section>
+
         <!-- Dashboard Section -->
         <section class="dashboard-section" id="dashboardSection">
             <div class="welcome-message">
@@ -1932,6 +2012,11 @@
                 <h2 class="lang-zh">歡迎, <span id="welcomeNameZh">創意思考者</span>!</h2>
                 <p class="lang-en">Ready to boost your creativity with fun activities?</p>
                 <p class="lang-zh">準備好通過有趣的活動來提升你的創造力了嗎？</p>
+                <div class="auth-buttons" style="margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" id="myWorkBtn">
+                        <span class="lang-en">My previous work</span><span class="lang-zh">我的作品</span>
+                    </button>
+                </div>
                 <div class="encouragement lang-en" id="encouragementMessage">Your ideas are amazing! Keep going!</div>
                 <div class="encouragement lang-zh" id="encouragementMessageZh">你的想法太棒了！繼續加油！</div>
             </div>
@@ -2589,12 +2674,31 @@ const puzzleImages = {
     let currentPuzzleImage = 0;
 
     // Backend sync helpers (optional: site still works if server isn't running)
+    function showAuthMessage(text, isError) {
+        const message = document.getElementById('authMessage');
+        if (!message) return;
+        message.textContent = text || '';
+        message.style.color = isError ? '#b00020' : '#1b5e20';
+        message.style.fontSize = '1.15rem';
+        if (text) message.scrollIntoView({ block: 'center' });
+    }
+
     async function postJson(path, body) {
-        const res = await fetch(apiUrl(path), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, 20000);
+        let res;
+        try {
+            res = await fetch(apiUrl(path), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+        } catch (error) {
+            throw new Error('Request failed: 0');
+        } finally {
+            clearTimeout(timer);
+        }
         if (!res.ok) {
             const text = await res.text().catch(() => '');
             throw new Error(`Request failed: ${res.status} ${text}`);
@@ -2626,6 +2730,12 @@ const puzzleImages = {
 
     async function trySyncUserOnLoad() {
         try {
+            if (currentUser && currentUser.sessionToken) {
+                const data = await postJson('/api/public/my-account', { token: currentUser.sessionToken });
+                applyServerAccount(data);
+                if (data.mustChangePassword) showNewPassword();
+                return;
+            }
             if (currentUser && currentUser.name && currentUser.email) {
                 const data = await postJson('/api/public/my-account', {
                     name: currentUser.name,
@@ -2653,13 +2763,16 @@ const puzzleImages = {
         const completed = Array.isArray(user.completedActivities) ? user.completedActivities.map(Number) : [];
         currentUser = {
             name: user.name,
+            username: user.username || '',
             age: user.age,
             email: user.email,
             language: user.language || 'en',
             fontSize: user.fontSize || 'medium',
             joinedDate: user.joinedDate,
             completedActivities: completed,
-            userId: user.id
+            userId: user.id,
+            sessionToken: data.token || (currentUser && currentUser.sessionToken) || '',
+            mustChangePassword: !!data.mustChangePassword
         };
         localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
         if (data.consentSigned) {
@@ -2687,16 +2800,103 @@ const puzzleImages = {
         window.myAccountCache = data;
     }
 
-    async function openReturningAccount(name, email) {
-        const data = await postJson('/api/public/my-account', { name: name, email: email });
+    let authMode = 'signup';
+
+    function accountProblem(error) {
+        const text = String(error && error.message || '');
+        const start = text.indexOf('{');
+        if (start >= 0) {
+            try {
+                return JSON.parse(text.slice(start)).error || '';
+            } catch (parseError) {
+                return '';
+            }
+        }
+        return '';
+    }
+
+    function explainAccountProblem(code) {
+        const english = currentLanguage === 'en';
+        const messages = {
+            'username-invalid': english
+                ? 'Username must be 3 to 20 characters.'
+                : '用戶名須為 3 至 20 個字。',
+            'password-short': english
+                ? 'Password must be at least 4 characters.'
+                : '密碼最少要有 4 個字元。',
+            'username-taken': english
+                ? 'That username is already used. Please choose another one.'
+                : '這個用戶名已有人使用，請另選一個。',
+            'email-taken': english
+                ? 'That email already has an account. Please sign in.'
+                : '這個電郵已有帳戶，請登入。',
+            'sign-in-failed': english
+                ? 'That username or password is not correct.'
+                : '用戶名或密碼不正確。',
+            'email-failed': english
+                ? 'The email could not be sent. Please tell your teacher.'
+                : '電郵未能寄出，請告訴老師。',
+            'missing-details': english
+                ? 'Please fill in all fields.'
+                : '請填寫所有欄位。',
+            'missing-email': english
+                ? 'Please enter the email you used when you signed up.'
+                : '請輸入註冊時的電郵。'
+        };
+        return messages[code] || (english
+            ? 'The account could not be opened. Please try again.'
+            : '未能開啟帳戶，請再試一次。');
+    }
+
+    function showAuthMode(mode) {
+        authMode = mode;
+        const form = document.getElementById('authForm');
+        const forgotBox = document.getElementById('forgotBox');
+        const newPasswordBox = document.getElementById('newPasswordBox');
+        if (form) form.style.display = mode === 'forgot' ? 'none' : 'block';
+        if (forgotBox) forgotBox.style.display = mode === 'forgot' ? 'block' : 'none';
+        if (newPasswordBox) newPasswordBox.style.display = 'none';
+        document.querySelectorAll('.signup-only').forEach(function (el) {
+            el.style.display = mode === 'signup' ? 'block' : 'none';
+        });
+        const forgotWrap = document.getElementById('forgotWrap');
+        if (forgotWrap) forgotWrap.style.display = mode === 'signin' ? 'block' : 'none';
+        if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
+    }
+
+    function showNewPassword() {
+        hideAllSections();
+        authSection.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'flex';
+        const form = document.getElementById('authForm');
+        const forgotBox = document.getElementById('forgotBox');
+        const newPasswordBox = document.getElementById('newPasswordBox');
+        if (form) form.style.display = 'none';
+        if (forgotBox) forgotBox.style.display = 'none';
+        if (newPasswordBox) newPasswordBox.style.display = 'block';
+        const usernameField = document.getElementById('newUsername');
+        if (usernameField && currentUser) usernameField.value = currentUser.username || '';
+        if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
+    }
+
+    async function openSignedIn(data, showWork) {
         applyServerAccount(data);
         updateLanguage(currentUser.language || 'en');
         updateFontSize(currentUser.fontSize || 'medium');
-        if (data.consentSigned) {
-            showDashboard();
-        } else {
-            showConsentForm();
+        if (logoutBtn) logoutBtn.style.display = 'flex';
+        if (data.mustChangePassword) {
+            showNewPassword();
+            return;
         }
+        if (!data.consentSigned) {
+            showConsentForm();
+            return;
+        }
+        if (showWork) {
+            showMyWork();
+            return;
+        }
+        showDashboard();
     }
 
     // Initialize the application
@@ -2744,7 +2944,9 @@ const puzzleImages = {
             trySyncUserOnLoad();
             
             const consentSigned = localStorage.getItem(`consentSigned_${currentUser.name}`);
-            if (consentSigned === 'true') {
+            if (currentUser.mustChangePassword) {
+                showNewPassword();
+            } else if (consentSigned === 'true') {
                 showDashboard();
             } else {
                 showConsentForm();
@@ -2766,8 +2968,48 @@ const puzzleImages = {
     // Setup all event listeners
     function setupEventListeners() {
         // Authentication
-        if (authForm) authForm.addEventListener('submit', handleAuthSubmit);
-        if (signInBtn) signInBtn.addEventListener('click', handleSignIn);
+        if (authForm) authForm.addEventListener('submit', function (event) {
+            if (authMode === 'signin') {
+                event.preventDefault();
+                handleSignIn();
+                return;
+            }
+            handleAuthSubmit(event);
+        });
+        if (authForm) authForm.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' || (event.target && event.target.tagName === 'TEXTAREA')) return;
+            event.preventDefault();
+            if (authMode === 'signin') handleSignIn();
+            else handleAuthSubmit(event);
+        });
+        if (signInBtn) signInBtn.addEventListener('click', function () {
+            if (authMode !== 'signin') {
+                showAuthMode('signin');
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                if (!username || !password) return;
+            }
+            handleSignIn();
+        });
+        const signUpButton = document.getElementById('signUpBtn');
+        if (signUpButton) signUpButton.addEventListener('click', function () {
+            showAuthMode('signup');
+            handleAuthSubmit({ preventDefault: function () {} });
+        });
+        const forgotButton = document.getElementById('forgotBtn');
+        if (forgotButton) forgotButton.addEventListener('click', function () { showAuthMode('forgot'); });
+        const backToSignInBtn = document.getElementById('backToSignInBtn');
+        if (backToSignInBtn) backToSignInBtn.addEventListener('click', function () { showAuthMode('signin'); });
+        const sendResetBtn = document.getElementById('sendResetBtn');
+        if (sendResetBtn) sendResetBtn.addEventListener('click', sendResetEmail);
+        const savePasswordBtn = document.getElementById('savePasswordBtn');
+        if (savePasswordBtn) savePasswordBtn.addEventListener('click', saveNewPassword);
+        const myWorkBtn = document.getElementById('myWorkBtn');
+        if (myWorkBtn) myWorkBtn.addEventListener('click', showMyWork);
+        const backFromWorkBtn = document.getElementById('backFromWorkBtn');
+        if (backFromWorkBtn) backFromWorkBtn.addEventListener('click', showDashboard);
+        const changeAccountBtn = document.getElementById('changeAccountBtn');
+        if (changeAccountBtn) changeAccountBtn.addEventListener('click', showNewPassword);
         
         // Consent form
         if (submitConsentBtn) submitConsentBtn.addEventListener('click', submitConsentForm);
@@ -2881,133 +3123,121 @@ const puzzleImages = {
 
     // Handle authentication
     async function handleAuthSubmit(e) {
-        e.preventDefault();
-        
-        const name = document.getElementById('name')?.value;
+        if (e && e.preventDefault) e.preventDefault();
+        authMode = 'signup';
+
+        const name = document.getElementById('name')?.value.trim();
         const age = document.getElementById('age')?.value;
-        const email = document.getElementById('email')?.value;
+        const email = document.getElementById('email')?.value.trim();
         const language = document.getElementById('language')?.value;
-        
-        if (!name || !age || !email || !language) {
-            alert(currentLanguage === 'en' ? 
-                "Please fill in all fields." : 
-                "請填寫所有欄位。");
+        const username = document.getElementById('username')?.value.trim();
+        const password = document.getElementById('password')?.value || '';
+        const confirmPassword = document.getElementById('confirmPassword')?.value || '';
+
+        if (!name || !age || !email || !language || !username || !password) {
+            showAuthMessage(currentLanguage === 'en' ? 'Please fill in all fields.' : '請填寫所有欄位。', true);
+            return;
+        }
+        if (password !== confirmPassword) {
+            showAuthMessage(currentLanguage === 'en' ? 'The two passwords do not match.' : '兩次輸入的密碼不相同。', true);
             return;
         }
 
+        const signUpButton = document.getElementById('signUpBtn');
+        const signUpLabel = signUpButton ? signUpButton.innerHTML : '';
+        if (signUpButton) {
+            signUpButton.disabled = true;
+            signUpButton.textContent = currentLanguage === 'en' ? 'Saving...' : '正在保存...';
+        }
+        showAuthMessage(currentLanguage === 'en' ? 'Saving your account...' : '正在保存帳戶...');
         try {
-            await openReturningAccount(name, email);
-            return;
+            const data = await postJson('/api/public/sign-up', {
+                name: name,
+                age: age,
+                email: email,
+                language: language,
+                username: username,
+                password: password,
+                fontSize: 'medium',
+                joinedDate: new Date().toISOString()
+            });
+            showAuthMessage('');
+            await openSignedIn(data, false);
         } catch (error) {
-            const status = requestStatus(error);
-            if (status === 401) {
-                alert(currentLanguage === 'en'
-                    ? "That email is already used with a different name. Please sign in with the same name and email."
-                    : "這個電郵已用另一個名字登記。請用相同的名字和電郵登入。");
-                return;
-            }
-            if (status !== 404 && status !== 0) {
-                alert(currentLanguage === 'en'
-                    ? "The saved account could not be opened. Please try again."
-                    : "未能開啟已保存的帳戶，請再試一次。");
-                return;
+            showAuthMessage(explainAccountProblem(accountProblem(error)), true);
+        } finally {
+            if (signUpButton) {
+                signUpButton.disabled = false;
+                signUpButton.innerHTML = signUpLabel;
             }
         }
-        
-        currentUser = {
-            name,
-            age,
-            email,
-            language,
-            fontSize: 'medium',
-            joinedDate: new Date().toISOString(),
-            completedActivities: []
-        };
-        
-        localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
-        try {
-            await upsertCurrentUserToBackend();
-        } catch (e) {
-            // ignore if backend isn't running
-        }
-        updateLanguage(language);
-        showConsentForm();
     }
 
-    // Handle sign in
     async function handleSignIn() {
-        const name = document.getElementById('name')?.value;
-        const email = document.getElementById('email')?.value;
-        
-        if (!name || !email) {
-            alert(currentLanguage === 'en' ? 
-                "Please enter name and email to sign in." : 
-                "請輸入姓名和電子郵件以登入。");
+        const username = document.getElementById('username')?.value.trim();
+        const password = document.getElementById('password')?.value || '';
+        if (!username || !password) {
+            showAuthMessage(currentLanguage === 'en'
+                ? 'Please enter your username and password.'
+                : '請輸入用戶名和密碼。', true);
             return;
         }
-
+        showAuthMessage(currentLanguage === 'en' ? 'Signing in...' : '正在登入...');
         try {
-            await openReturningAccount(name, email);
-            return;
+            const data = await postJson('/api/public/sign-in', {
+                username: username,
+                password: password
+            });
+            showAuthMessage('');
+            await openSignedIn(data, true);
         } catch (error) {
-            const status = requestStatus(error);
-            if (status === 401) {
-                alert(currentLanguage === 'en'
-                    ? "Please use the same name and email you signed up with."
-                    : "請使用註冊時的名字和電郵。");
-                return;
-            }
-            if (status === 404) {
-                alert(currentLanguage === 'en'
-                    ? "No saved account was found. Please fill in your age and language, then press the sign-up button."
-                    : "找不到已保存的帳戶。請填寫年齡和語言，然後按註冊。");
-                return;
-            }
+            showAuthMessage(explainAccountProblem(accountProblem(error) || 'sign-in-failed'), true);
         }
-        
-        const savedUser = localStorage.getItem('creativityCornerUser');
-        
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            if (currentUser.name === name && currentUser.email === email) {
-                updateLanguage(currentUser.language);
-                updateFontSize(currentUser.fontSize || 'medium');
-                
-               const consentSigned = localStorage.getItem(`consentSigned_${currentUser.name}`);
-               if (consentSigned === 'true') {
-                    showDashboard();
-                } else {
-                    showConsentForm();
-                }
-                try {
-                    await upsertCurrentUserToBackend();
-                } catch (e) {
-                    // ignore
-                }
-                return;
-            }
+    }
+
+    async function sendResetEmail() {
+        const email = document.getElementById('forgotEmail')?.value.trim();
+        const message = document.getElementById('forgotMessage');
+        if (!email) {
+            alert(explainAccountProblem('missing-email'));
+            return;
         }
-        
-        const demoUser = {
-            name: name,
-            age: document.getElementById('age')?.value || "8",
-            email: email,
-            language: document.getElementById('language')?.value || "en",
-            fontSize: 'medium',
-            joinedDate: new Date().toISOString(),
-            completedActivities: []
-        };
-        
-        currentUser = demoUser;
-        localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
         try {
-            await upsertCurrentUserToBackend();
-        } catch (e) {
-            // ignore
+            await postJson('/api/public/forgot-account', { email: email });
+            if (message) {
+                message.textContent = currentLanguage === 'en'
+                    ? 'If that email is registered, we sent your username and a temporary password. Sign in, then choose a new password.'
+                    : '如果這個電郵已登記，我們已寄出用戶名和臨時密碼。請登入，然後設定新密碼。';
+            }
+        } catch (error) {
+            if (message) message.textContent = explainAccountProblem(accountProblem(error) || 'email-failed');
         }
-        updateLanguage(currentUser.language);
-        updateFontSize(currentUser.fontSize);
-        showConsentForm();
+    }
+
+    async function saveNewPassword() {
+        const username = document.getElementById('newUsername')?.value.trim();
+        const password = document.getElementById('newPassword')?.value || '';
+        const confirmPassword = document.getElementById('confirmNewPassword')?.value || '';
+        if (!currentUser || !currentUser.sessionToken) {
+            alert(explainAccountProblem('sign-in-failed'));
+            return;
+        }
+        if (password !== confirmPassword) {
+            alert(currentLanguage === 'en' ? 'The two passwords do not match.' : '兩次輸入的密碼不相同。');
+            return;
+        }
+        try {
+            const data = await postJson('/api/public/set-password', {
+                token: currentUser.sessionToken,
+                username: username,
+                password: password
+            });
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
+            await openSignedIn(data, true);
+        } catch (error) {
+            alert(explainAccountProblem(accountProblem(error)));
+        }
     }
 
 // Show consent form - FIXED VERSION
@@ -3332,6 +3562,11 @@ function checkIfCanvasIsEmpty(canvas) {
             document.getElementById('age').value = '';
             document.getElementById('email').value = '';
             document.getElementById('language').value = 'en';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            const confirmPassword = document.getElementById('confirmPassword');
+            if (confirmPassword) confirmPassword.value = '';
+            showAuthMode('signup');
             
             updateLanguage('en');
             updateFontSize('medium');
@@ -5674,6 +5909,7 @@ function renderMyWork(data) {
     const check = (data && data.creativityCheck) || {};
     return workCard('My information', '我的資料', savedOrEmpty([
         ['Name 名字', user.name || ''],
+        ['Username 用戶名', user.username || ''],
         ['Age 年齡', user.age || ''],
         ['Email 電郵', user.email || '']
     ])) +
@@ -5716,10 +5952,9 @@ async function showMyWork() {
     if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
     let data = window.myAccountCache || accountFromLocal();
     try {
-        data = await postJson('/api/public/my-account', {
-            name: currentUser.name,
-            email: currentUser.email
-        });
+        data = await postJson('/api/public/my-account', currentUser.sessionToken
+            ? { token: currentUser.sessionToken }
+            : { name: currentUser.name, email: currentUser.email });
         applyServerAccount(data);
     } catch (error) {
         if (!data) data = accountFromLocal();

@@ -6,14 +6,20 @@ Records are stored in data/creativity.db and a readable copy in data/records.jso
 """
 
 import base64
+import hashlib
+import hmac
 import json
 import os
+import re
+import secrets
+import smtplib
 import sqlite3
 import ssl
 import urllib.error
 import urllib.request
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -29,6 +35,7 @@ RECORDS_PATH = os.path.join(DATA_DIR, "records.json")
 
 ADMIN_USERNAME = "CreativityCorner"
 ADMIN_PASSWORD_PATH = os.path.join(DATA_DIR, "admin-password.txt")
+MAIL_SETTINGS_PATH = os.path.join(DATA_DIR, "mail-settings.json")
 
 SORT_BOXES = {
     "1": "Things we can do right now",
@@ -72,6 +79,77 @@ def connect():
     return connection
 
 
+def ensure_account_tables(connection):
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
+    if "username" not in columns:
+        connection.execute("ALTER TABLE users ADD COLUMN username TEXT")
+    if "password_hash" not in columns:
+        connection.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+    if "must_change_password" not in columns:
+        connection.execute(
+            "ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0"
+        )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+def clean_username(value):
+    text = " ".join(str(value or "").split())
+    if len(text) < 3 or len(text) > 20:
+        return ""
+    return text
+
+
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("ascii"), 120_000)
+    return salt + ":" + digest.hex()
+
+
+def password_matches(stored, password):
+    if not stored or ":" not in str(stored):
+        return False
+    salt = str(stored).split(":", 1)[0]
+    return hmac.compare_digest(str(stored), hash_password(password, salt))
+
+
+def temporary_password():
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def start_session(connection, user_id):
+    token = secrets.token_urlsafe(24)
+    expires = (datetime.now(timezone.utc) + timedelta(days=30)).replace(microsecond=0).isoformat()
+    connection.execute(
+        "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
+        (token, user_id, expires),
+    )
+    return token
+
+
+def user_by_token(connection, token):
+    if not token:
+        return None
+    row = connection.execute(
+        """
+        SELECT users.* FROM sessions
+        JOIN users ON users.id = sessions.user_id
+        WHERE sessions.token = ? AND sessions.expires_at > ?
+        """,
+        (token, now_iso()),
+    ).fetchone()
+    return row
+
+
 def init_db():
     with connect() as connection:
         connection.executescript(
@@ -103,6 +181,7 @@ def init_db():
             );
             """
         )
+        ensure_account_tables(connection)
 
 
 def load_json(text, fallback):
@@ -125,15 +204,18 @@ def activity_ids(values):
 
 
 def user_public(row):
+    keys = row.keys()
     return {
         "id": row["id"],
         "name": row["name"],
+        "username": row["username"] if "username" in keys else "",
         "age": row["age"],
         "email": row["email"],
         "language": row["language"],
         "fontSize": row["font_size"],
         "joinedDate": row["joined_date"],
         "completedActivities": load_json(row["completed_activities"], []),
+        "mustChangePassword": bool(row["must_change_password"]) if "must_change_password" in keys else False,
     }
 
 
@@ -548,27 +630,17 @@ def names_match(stored, typed):
     return str(stored or "").strip().casefold() == str(typed or "").strip().casefold()
 
 
-def my_account(body):
-    name = str(body.get("name") or "").strip()
-    email = str(body.get("email") or "").strip().lower()
-    if not name or not email:
-        return 400, {"error": "Name and email are required"}
-    with connect() as connection:
-        row = connection.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        if not row:
-            return 404, {"error": "No account found"}
-        if not names_match(row["name"], name):
-            return 401, {"error": "Name and email do not match"}
-        user = user_public(row)
-        consent_row = connection.execute(
-            "SELECT consent_json FROM consents WHERE user_id = ?", (user["id"],)
-        ).fetchone()
-        submissions = [
-            submission_from_row(item)
-            for item in connection.execute(
-                "SELECT * FROM submissions WHERE user_id = ? ORDER BY activity_id", (user["id"],)
-            )
-        ]
+def account_payload(connection, row, token=""):
+    user = user_public(row)
+    consent_row = connection.execute(
+        "SELECT consent_json FROM consents WHERE user_id = ?", (user["id"],)
+    ).fetchone()
+    submissions = [
+        submission_from_row(item)
+        for item in connection.execute(
+            "SELECT * FROM submissions WHERE user_id = ? ORDER BY activity_id", (user["id"],)
+        )
+    ]
     consent = load_json(consent_row["consent_json"], None) if consent_row else None
     activities = []
     creativity = {"pre": None, "post": None}
@@ -591,14 +663,240 @@ def my_account(body):
                 "savedAt": item.get("savedAt"),
                 "responses": item.get("responses") or {},
             })
-    return 200, {
+    payload = {
         "user": user,
         "consentSigned": bool(consent),
         "drawingDataUrl": drawing,
         "puzzleProgress": puzzle_progress,
         "activities": activities,
         "creativityCheck": creativity,
+        "mustChangePassword": user["mustChangePassword"],
     }
+    if token:
+        payload["token"] = token
+    return payload
+
+
+def username_taken(connection, username, except_id=""):
+    row = connection.execute(
+        "SELECT id FROM users WHERE lower(username) = ?",
+        (username.lower(),),
+    ).fetchone()
+    return bool(row and row["id"] != except_id)
+
+
+def sign_up(body):
+    name = str(body.get("name") or "").strip()
+    email = str(body.get("email") or "").strip().lower()
+    age = str(body.get("age") or "").strip()
+    username = clean_username(body.get("username"))
+    password = str(body.get("password") or "")
+    if not name or not email or "@" not in email or not age:
+        return 400, {"error": "missing-details"}
+    if not username:
+        return 400, {"error": "username-invalid"}
+    if len(password) < 4:
+        return 400, {"error": "password-short"}
+    with connect() as connection:
+        if username_taken(connection, username):
+            return 409, {"error": "username-taken"}
+        existing = connection.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        password_hash = hash_password(password)
+        if existing and existing["password_hash"]:
+            return 409, {"error": "email-taken"}
+        if existing:
+            user_id = existing["id"]
+            connection.execute(
+                """
+                UPDATE users
+                SET name = ?, age = ?, language = ?, font_size = ?, username = ?,
+                    password_hash = ?, must_change_password = 0, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    name,
+                    age,
+                    body.get("language"),
+                    body.get("fontSize"),
+                    username,
+                    password_hash,
+                    now_iso(),
+                    user_id,
+                ),
+            )
+        else:
+            user_id = str(uuid.uuid4())
+            connection.execute(
+                """
+                INSERT INTO users
+                    (id, name, age, email, language, font_size, joined_date, completed_activities,
+                     updated_at, username, password_hash, must_change_password)
+                VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, 0)
+                """,
+                (
+                    user_id,
+                    name,
+                    age,
+                    email,
+                    body.get("language"),
+                    body.get("fontSize"),
+                    body.get("joinedDate") or now_iso(),
+                    now_iso(),
+                    username,
+                    password_hash,
+                ),
+            )
+        row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        token = start_session(connection, user_id)
+        payload = account_payload(connection, row, token)
+        write_records(connection)
+    return 200, payload
+
+
+def sign_in(body):
+    username = clean_username(body.get("username"))
+    password = str(body.get("password") or "")
+    if not username or not password:
+        return 401, {"error": "sign-in-failed"}
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM users WHERE lower(username) = ?",
+            (username.lower(),),
+        ).fetchone()
+        if not row or not password_matches(row["password_hash"], password):
+            return 401, {"error": "sign-in-failed"}
+        token = start_session(connection, row["id"])
+        payload = account_payload(connection, row, token)
+    return 200, payload
+
+
+def send_account_email(recipient, username, temporary):
+    subject = "Creativity Corner account / 創意角落帳戶"
+    message = (
+        "Creativity Corner\n\n"
+        "Your username is: %s\n"
+        "Your temporary password is: %s\n\n"
+        "Sign in with these, then choose a new password. You can also choose a new username.\n\n"
+        "創意角落\n\n"
+        "你的用戶名是：%s\n"
+        "你的臨時密碼是：%s\n\n"
+        "請用以上資料登入，然後設定新密碼。你也可以更改用戶名。\n"
+    ) % (username, temporary, username, temporary)
+    settings = None
+    try:
+        with open(MAIL_SETTINGS_PATH, encoding="utf-8") as handle:
+            settings = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        settings = None
+    if not isinstance(settings, dict) or not settings.get("host") or not settings.get("from"):
+        return False
+    email = EmailMessage()
+    email["Subject"] = subject
+    email["From"] = settings.get("from")
+    email["To"] = recipient
+    email.set_content(message)
+    try:
+        port = int(settings.get("port") or 465)
+        if port == 465:
+            smtp = smtplib.SMTP_SSL(settings["host"], port, timeout=30, context=https_context())
+        else:
+            smtp = smtplib.SMTP(settings["host"], port, timeout=30)
+            smtp.ehlo()
+            smtp.starttls(context=https_context())
+            smtp.ehlo()
+        with smtp:
+            if settings.get("username"):
+                smtp.login(settings["username"], settings.get("password") or "")
+            smtp.send_message(email)
+    except (OSError, smtplib.SMTPException):
+        return False
+    return True
+
+
+def spare_username(connection, name, email):
+    stem = re.sub(r"[^A-Za-z0-9]", "", str(name or ""))[:12]
+    if len(stem) < 3:
+        stem = re.sub(r"[^A-Za-z0-9]", "", email.split("@", 1)[0])[:12]
+    if len(stem) < 3:
+        stem = "user"
+    candidate = stem
+    number = 1
+    while username_taken(connection, candidate):
+        number += 1
+        candidate = (stem[:16] + str(number))[:20]
+    return candidate
+
+
+def forgot_account(body):
+    email = str(body.get("email") or "").strip().lower()
+    if "@" not in email:
+        return 400, {"error": "missing-email"}
+    with connect() as connection:
+        row = connection.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if not row:
+            return 200, {"ok": True}
+        username = row["username"] or spare_username(connection, row["name"], email)
+        temporary = temporary_password()
+        if not send_account_email(email, username, temporary):
+            return 503, {"error": "email-failed"}
+        connection.execute(
+            """
+            UPDATE users
+            SET username = ?, password_hash = ?, must_change_password = 1, updated_at = ?
+            WHERE id = ?
+            """,
+            (username, hash_password(temporary), now_iso(), row["id"]),
+        )
+        write_records(connection)
+    return 200, {"ok": True}
+
+
+def set_password(body):
+    token = str(body.get("token") or "")
+    password = str(body.get("password") or "")
+    username = clean_username(body.get("username"))
+    if len(password) < 4:
+        return 400, {"error": "password-short"}
+    if not username:
+        return 400, {"error": "username-invalid"}
+    with connect() as connection:
+        row = user_by_token(connection, token)
+        if not row:
+            return 401, {"error": "sign-in-failed"}
+        if username_taken(connection, username, row["id"]):
+            return 409, {"error": "username-taken"}
+        connection.execute(
+            """
+            UPDATE users
+            SET username = ?, password_hash = ?, must_change_password = 0, updated_at = ?
+            WHERE id = ?
+            """,
+            (username, hash_password(password), now_iso(), row["id"]),
+        )
+        updated = connection.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone()
+        payload = account_payload(connection, updated, token)
+        write_records(connection)
+    return 200, payload
+
+
+def my_account(body):
+    token = str(body.get("token") or "")
+    name = str(body.get("name") or "").strip()
+    email = str(body.get("email") or "").strip().lower()
+    with connect() as connection:
+        if token:
+            row = user_by_token(connection, token)
+            if not row:
+                return 401, {"error": "sign-in-failed"}
+            return 200, account_payload(connection, row, token)
+        if not name or not email:
+            return 400, {"error": "Name and email are required"}
+        row = connection.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if not row:
+            return 404, {"error": "No account found"}
+        if not names_match(row["name"], name):
+            return 401, {"error": "Name and email do not match"}
+        return 200, account_payload(connection, row)
 
 
 def list_users():
@@ -707,6 +1005,38 @@ class RecordHandler(SimpleHTTPRequestHandler):
 
     def handle_api(self, method):
         path = urlparse(self.path).path.rstrip("/")
+        if method == "POST" and path == "/api/public/sign-up":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = sign_up(body)
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/public/sign-in":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = sign_in(body)
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/public/forgot-account":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = forgot_account(body)
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/public/set-password":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = set_password(body)
+            self.send_json(status, payload)
+            return
         if method == "POST" and path == "/api/public/my-account":
             body = self.read_json()
             if body is None:
