@@ -84,4 +84,8 @@ PY
     if [[ "$line" =~ https://[A-Za-z0-9]+(-[A-Za-z0-9]+)+\.trycloudflare\.com ]]; then
         publish_url "${BASH_REMATCH[0]}"
     fi
+    if [[ "$line" == *"Tunnel not found"* ]]; then
+        pkill -f "cloudflared tunnel --url http://127.0.0.1:8765" || true
+        exit 1
+    fi
 done
