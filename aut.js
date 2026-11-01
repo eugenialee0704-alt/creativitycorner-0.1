@@ -186,7 +186,8 @@
                 langPair('Start the after-training check', '開始訓練後測試') + '</button></div>';
         } else {
             const change = scoreApi().improvement(pre, post);
-            body = langPair(
+            body = creativityResultCopy(change).html +
+                langPair(
                 '<p class="aut-lead">Both checks are saved. Improvement is the after-training score minus the first score.</p>',
                 '<p class="aut-lead">兩次測試都已儲存。進步分數是訓練後分數減去第一次分數。</p>'
             ) +
@@ -542,6 +543,77 @@
         syncAut(record[phase]);
         renderArchive(phase);
         if (phase === 'pre') showActivityInvite();
+        if (phase === 'post') showScoreResult();
+    }
+
+    function creativityResultCopy(change) {
+        if (!change) {
+            return { kind: '', html: '', buttonEn: 'OK', buttonZh: '好的', tryAgain: false };
+        }
+        if (change.total > 0) {
+            return {
+                kind: 'up',
+                html: langPair(
+                    '<p class="aut-result-note up">Great job! Your creativity score has gone up.</p>',
+                    '<p class="aut-result-note up">你做得很好！你的創意分數上升了。</p>'
+                ),
+                buttonEn: 'OK',
+                buttonZh: '好的',
+                tryAgain: false
+            };
+        }
+        if (change.total < 0) {
+            return {
+                kind: 'down',
+                html: langPair(
+                    '<p class="aut-result-note down">Your creativity score went down this time. That is okay. Try the activities again and see what new ideas you can find.</p>',
+                    '<p class="aut-result-note down">這次你的創意分數下降了。沒關係。再做一次下面的活動，看看你能想到什麼新主意。</p>'
+                ),
+                buttonEn: 'Try again',
+                buttonZh: '再試一次',
+                tryAgain: true
+            };
+        }
+        return {
+            kind: 'same',
+            html: langPair(
+                '<p class="aut-result-note">Your creativity score stayed the same. Try the activities again and see if you can think of even more ideas.</p>',
+                '<p class="aut-result-note">你的創意分數和上次一樣。再做一次下面的活動，看看你能不能想到更多主意。</p>'
+            ),
+            buttonEn: 'Try again',
+            buttonZh: '再試一次',
+            tryAgain: true
+        };
+    }
+
+    function showScoreResult() {
+        const record = loadRecord();
+        const pre = record.pre && record.pre.result;
+        const post = record.post && record.post.result;
+        const change = scoreApi().improvement(pre, post);
+        if (!change) return;
+        const copy = creativityResultCopy(change);
+        const old = document.getElementById('autScoreResult');
+        if (old) old.remove();
+        const wrap = document.createElement('div');
+        wrap.id = 'autScoreResult';
+        wrap.className = 'aut-popup-backdrop';
+        wrap.innerHTML =
+            '<div class="aut-popup ' + copy.kind + '" role="dialog" aria-modal="true">' +
+            copy.html +
+            '<button class="btn btn-primary" id="autScoreResultOk" type="button">' +
+            langSpan(copy.buttonEn, copy.buttonZh) +
+            '</button></div>';
+        document.body.appendChild(wrap);
+        applyLang();
+        document.getElementById('autScoreResultOk').addEventListener('click', function () {
+            wrap.remove();
+            if (typeof showDashboard === 'function') showDashboard();
+            if (copy.tryAgain) {
+                const cards = document.getElementById('activityCards');
+                if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
     }
 
     function showActivityInvite() {

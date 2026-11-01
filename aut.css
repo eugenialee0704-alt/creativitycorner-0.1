@@ -368,3 +368,24 @@
     margin: 0 0 18px;
     color: #3a3a3a;
 }
+
+.aut-result-note {
+    font-weight: 700;
+    line-height: 1.55;
+    background: #fffdf6;
+    border: 3px solid #ffd166;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin: 0 0 16px;
+}
+
+.aut-result-note.up {
+    background: #f3fffd;
+    border-color: #2a9d8f;
+}
+
+.aut-popup .aut-result-note {
+    border: none;
+    background: transparent;
+    padding: 0;
+}
