@@ -1413,16 +1413,16 @@
 
 .puzzle-piece {
     position: absolute;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    transition: all 0.5s ease;
+    background-size: 300px 300px;
+    background-repeat: no-repeat;
+    transition: opacity 0.4s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3rem;
+    font-size: 2rem;
     color: white;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    box-sizing: border-box;
 }
 
 .puzzle-piece.locked {
@@ -1438,9 +1438,9 @@
 
 .puzzle-pieces {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    max-width: 300px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    max-width: 420px;
     margin: 0 auto;
 }
 
@@ -1533,18 +1533,17 @@
 
 .puzzle-piece {
     position: absolute;
-    width: 100%;
-    height: 100%;
     background-size: 300px 300px;
     background-repeat: no-repeat;
-    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.4s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3rem;
+    font-size: 2rem;
     color: white;
     text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-    border-radius: 20px;
+    box-sizing: border-box;
+    box-shadow: inset 0 0 0 3px #fff;
 }
 
 .puzzle-piece.locked {
@@ -1557,17 +1556,23 @@
 .puzzle-piece.unlocked {
     filter: none;
     opacity: 1;
-    transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(255, 209, 102, 0.3);
+    transform: none;
+    animation: none;
 }
 
-.puzzle-piece.unlocked:nth-child(1) { background-position: 0 0; }
-.puzzle-piece.unlocked:nth-child(2) { background-position: 100% 0; }
-.puzzle-piece.unlocked:nth-child(3) { background-position: 0 100%; }
-.puzzle-piece.unlocked:nth-child(4) { background-position: 100% 100%; }
-.puzzle-piece.unlocked:nth-child(5) { 
-    background-position: 50% 50%;
-    background-size: 150% 150%;
+.puzzle-instruction {
+    max-width: 560px;
+    margin: 0 auto 24px;
+    background: #fff8e8;
+    border: 3px solid #ffd166;
+    border-radius: 18px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #5a3e00;
+    line-height: 1.5;
 }
 
 .puzzle-piece-small.unlocked {
@@ -1592,7 +1597,7 @@
 }
 
 .puzzle-piece.unlocked:nth-child(1) {
-    animation: penguinDance 2s ease-in-out infinite;
+    animation: none;
 }
 
 /* Modal Styles */
@@ -2046,15 +2051,10 @@
         <h3 class="puzzle-title lang-en">🐧 Penguin Puzzle Challenge!</h3>
         <h3 class="puzzle-title lang-zh">🐧 企鵝拼圖挑戰！</h3>
         
-        <p class="puzzle-description lang-en">Complete activities to unlock puzzle pieces and reveal a cheering penguin!</p>
-        <p class="puzzle-description lang-zh">完成活動來解鎖拼圖碎片，揭開為你加油的企鵝！</p>
-
-        <p class="lang-en" style="text-align: center; margin: 15px 0; color: var(--primary-color); font-weight: 600; font-size: 1.1rem;">
-            Click the card below to reveal the message.
-        </p>
-        <p class="lang-zh" style="text-align: center; margin: 15px 0; color: var(--primary-color); font-weight: 600; font-size: 1.1rem;">
-            點擊下方的卡片查看訊息。
-        </p>
+        <div class="puzzle-instruction">
+            <p class="lang-en">This Penguin Puzzle Challenge is a picture made of five pieces. Finish one activity, and one piece of the puzzle will be revealed.</p>
+            <p class="lang-zh">這個企鵝拼圖挑戰是一幅由五塊拼圖組成的圖畫。完成一個活動，就會揭開一塊拼圖。</p>
+        </div>
         
         <div class="puzzle-container">
             <div class="puzzle-image" id="puzzleImage">
@@ -2667,7 +2667,7 @@
 
 const puzzleImages = {
     complete: [
-        'https://i.imgur.com/7RtrMKx.jpeg' // CORRECTED: Added file extension
+        'images/penguin-in-desert.jpg'
     ],
     pieces: ['🐧', '🎉', '🌟', '✨', '🎨'] // Puzzle pieces
 };
@@ -4383,61 +4383,58 @@ function setupSequentialInput() {
         puzzleImageContainer.innerHTML = '';
         puzzlePiecesContainer.innerHTML = '';
         
-        const completedCount = activities.filter(a => a.completed).length;
-        const totalCount = activities.length;
-        const progressPercent = (completedCount / totalCount) * 100;
+        const pieceCount = 5;
+        const revealed = [];
+        for (let id = 1; id <= pieceCount; id++) {
+            revealed.push(activityIsDone(id));
+        }
+        const completedCount = revealed.filter(Boolean).length;
+        const progressPercent = (completedCount / pieceCount) * 100;
         
-        if (puzzleProgressText) puzzleProgressText.textContent = `${completedCount}/${totalCount}`;
+        if (puzzleProgressText) puzzleProgressText.textContent = `${completedCount}/${pieceCount}`;
         if (puzzleProgressFill) puzzleProgressFill.style.width = `${progressPercent}%`;
         
-        for (let i = 0; i < 5; i++) {
+        const slots = puzzleSlots();
+        for (let i = 0; i < pieceCount; i++) {
             const pieceSmall = document.createElement('div');
-            pieceSmall.className = `puzzle-piece-small ${i < completedCount ? 'unlocked' : 'locked'}`;
+            pieceSmall.className = `puzzle-piece-small ${revealed[i] ? 'unlocked' : 'locked'}`;
             pieceSmall.dataset.pieceIndex = i;
-            pieceSmall.textContent = i < completedCount ? '✓' : (i + 1);
+            pieceSmall.textContent = revealed[i] ? '✓' : (i + 1);
             
-            if (i < completedCount) {
+            if (revealed[i]) {
                 pieceSmall.style.backgroundColor = getPieceColor(i);
                 pieceSmall.addEventListener('click', () => showPiecePreview(i));
             }
             
             puzzlePiecesContainer.appendChild(pieceSmall);
-            
-            if (i < completedCount) {
-    const piece = document.createElement('div');
-    piece.className = 'puzzle-piece unlocked';
-    piece.dataset.pieceIndex = i;
-    
-    // Create an image element to handle loading errors
-    const img = new Image();
-    img.onload = function() {
-        piece.style.backgroundImage = `url(${puzzleImages.complete[currentPuzzleImage]})`;
-    };
-    img.onerror = function() {
-        // Fallback to a colored background if image fails to load
-        piece.style.backgroundImage = `linear-gradient(135deg, ${getPieceColor(i)}, ${getCategoryColor((i+1).toString())})`;
-        piece.innerHTML = `<div style="font-size: 2rem; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">${puzzleImages.pieces[i]}</div>`;
-    };
-    img.src = puzzleImages.complete[currentPuzzleImage];
-    
-    piece.style.backgroundPosition = getPiecePosition(i);
-    piece.style.backgroundSize = '250px 250px';
-    piece.style.backgroundColor = getPieceColor(i); // Fallback color
-    puzzleImageContainer.appendChild(piece);
-}
-            else {
-                const piece = document.createElement('div');
-                piece.className = 'puzzle-piece locked';
-                piece.dataset.pieceIndex = i;
+
+            const piece = document.createElement('div');
+            piece.className = revealed[i] ? 'puzzle-piece unlocked' : 'puzzle-piece locked';
+            piece.dataset.pieceIndex = i;
+            placePuzzlePiece(piece, slots[i]);
+            if (revealed[i]) {
+                const imageUrl = puzzleImages.complete[currentPuzzleImage];
+                piece.style.backgroundImage = `url(${imageUrl})`;
+                piece.style.backgroundSize = '300px 300px';
+                piece.style.backgroundPosition = `-${slots[i].left}px -${slots[i].top}px`;
                 piece.style.backgroundColor = getPieceColor(i);
-                piece.innerHTML = `<div style="font-size: 2rem;">${puzzleImages.pieces[i]}</div>`;
-                puzzleImageContainer.appendChild(piece);
+                const img = new Image();
+                img.onerror = function () {
+                    piece.style.backgroundImage = `linear-gradient(135deg, ${getPieceColor(i)}, ${getCategoryColor((i + 1).toString())})`;
+                    piece.innerHTML = `<div style="font-size: 2rem; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">${puzzleImages.pieces[i]}</div>`;
+                };
+                img.src = imageUrl;
+            } else {
+                piece.style.backgroundColor = '#f3f3f3';
+                piece.style.color = '#b0b0b0';
+                piece.innerHTML = `<div style="font-size: 2rem;">${i + 1}</div>`;
             }
+            puzzleImageContainer.appendChild(piece);
         }
         
         if (rewardMessage) {
-            rewardMessage.style.display = completedCount === totalCount ? 'block' : 'none';
-            if (completedCount === totalCount) {
+            rewardMessage.style.display = completedCount === pieceCount ? 'block' : 'none';
+            if (completedCount === pieceCount) {
                 setTimeout(() => {
                     addCelebrationEffect();
                 }, 500);
@@ -4460,15 +4457,28 @@ function setupSequentialInput() {
         return colors[index % colors.length];
     }
 
-    function getPiecePosition(index) {
-        const positions = [
-            '0% 0%',
-            '50% 0%',
-            '0% 50%',
-            '50% 50%',
-            '25% 25%'
+    function puzzleSlots() {
+        return [
+            { left: 0, top: 0, width: 150, height: 120 },
+            { left: 150, top: 0, width: 150, height: 120 },
+            { left: 0, top: 120, width: 100, height: 180 },
+            { left: 100, top: 120, width: 100, height: 180 },
+            { left: 200, top: 120, width: 100, height: 180 }
         ];
-        return positions[index];
+    }
+
+    function placePuzzlePiece(piece, slot) {
+        piece.style.left = slot.left + 'px';
+        piece.style.top = slot.top + 'px';
+        piece.style.width = slot.width + 'px';
+        piece.style.height = slot.height + 'px';
+    }
+
+    function activityIsDone(activityId) {
+        const activity = activities.find(function (item) { return item.id === activityId; });
+        if (activity && activity.completed) return true;
+        const saved = currentUser && currentUser.completedActivities;
+        return Array.isArray(saved) && saved.map(Number).indexOf(activityId) !== -1;
     }
 
     function showPiecePreview(index) {
