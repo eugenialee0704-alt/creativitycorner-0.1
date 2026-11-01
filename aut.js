@@ -541,6 +541,32 @@
         sessionStorage.removeItem(timerKey(phase));
         syncAut(record[phase]);
         renderArchive(phase);
+        if (phase === 'pre') showActivityInvite();
+    }
+
+    function showActivityInvite() {
+        const old = document.getElementById('autActivityInvite');
+        if (old) old.remove();
+        const wrap = document.createElement('div');
+        wrap.id = 'autActivityInvite';
+        wrap.className = 'aut-popup-backdrop';
+        wrap.innerHTML =
+            '<div class="aut-popup" role="dialog" aria-modal="true">' +
+            langPair(
+                '<p>Would you like to try some interesting activities and see your creativity improve? Let\'s complete the activities below.</p>',
+                '<p>你想試試一些有趣的活動，看看自己的創造力有沒有進步嗎？讓我們完成下面的活動吧。</p>'
+            ) +
+            '<button class="btn btn-primary" id="autActivityInviteOk" type="button">' +
+            langSpan('Let\'s go', '出發吧') +
+            '</button></div>';
+        document.body.appendChild(wrap);
+        applyLang();
+        document.getElementById('autActivityInviteOk').addEventListener('click', function () {
+            wrap.remove();
+            if (typeof showDashboard === 'function') showDashboard();
+            const cards = document.getElementById('activityCards');
+            if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
     }
 
     async function syncAut(phasePayload) {

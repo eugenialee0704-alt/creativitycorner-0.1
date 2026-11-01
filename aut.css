@@ -338,3 +338,33 @@
         grid-template-columns: 1fr;
     }
 }
+
+.aut-popup-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4000;
+    padding: 20px;
+}
+
+.aut-popup {
+    background: #fffdf6;
+    border: 3px solid #ffd166;
+    border-radius: 20px;
+    max-width: 460px;
+    width: 100%;
+    padding: 28px 24px 22px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.aut-popup p {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.55;
+    margin: 0 0 18px;
+    color: #3a3a3a;
+}
