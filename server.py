@@ -905,6 +905,21 @@ def list_users():
     return 200, {"users": users}
 
 
+def clear_all_users():
+    with connect() as connection:
+        connection.execute("DELETE FROM submissions")
+        connection.execute("DELETE FROM consents")
+        connection.execute("DELETE FROM sessions")
+        connection.execute("DELETE FROM users")
+        write_records(connection)
+    if os.path.isdir(DRAWING_DIR):
+        for name in os.listdir(DRAWING_DIR):
+            path = os.path.join(DRAWING_DIR, name)
+            if name.endswith(".png") and os.path.isfile(path):
+                os.remove(path)
+    return 200, {"cleared": True}
+
+
 def user_details(user_id):
     with connect() as connection:
         row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -1081,6 +1096,13 @@ class RecordHandler(SimpleHTTPRequestHandler):
             if not self.admin_ok():
                 return
             status, payload = list_users()
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/admin/clear-users":
+            self.read_json()
+            if not self.admin_ok():
+                return
+            status, payload = clear_all_users()
             self.send_json(status, payload)
             return
         prefix = "/api/admin/users/"

@@ -75,6 +75,13 @@
         .record h3 { margin: 22px 0 8px; color: #8a6500; }
         .line { margin: 4px 0; }
         .muted { color: #888; }
+        .danger {
+            width: 100%;
+            margin-bottom: 8px;
+            background: #b42318;
+            color: white;
+        }
+        .clean-status { min-height: 1.2em; margin: 0 0 12px; font-weight: 700; color: #b42318; }
         img.drawing, img.signature {
             display: block;
             max-width: min(100%, 520px);
@@ -117,7 +124,11 @@
             <button class="primary" id="loginBtn" type="button">Sign in</button>
         </section>
         <section class="layout hidden" id="records">
-            <div class="card" id="userList"></div>
+            <div>
+                <button class="danger" id="cleanUsersBtn" type="button">Clean all user data</button>
+                <p class="clean-status" id="cleanStatus"></p>
+                <div class="card" id="userList"></div>
+            </div>
             <div class="card record" id="userRecord">
                 <p class="muted lang-en">Choose a name to see what that child saved.</p>
                 <p class="muted lang-zh hidden">請選擇一個名字，查看該參加者保存的內容。</p>
@@ -139,6 +150,7 @@
             document.getElementById('langBtn').textContent = language === 'en' ? '中文' : 'EN';
             document.getElementById('loginBtn').textContent = language === 'en' ? 'Sign in' : '登入';
             document.getElementById('logoutBtn').textContent = language === 'en' ? 'Log out' : '登出';
+            document.getElementById('cleanUsersBtn').textContent = language === 'en' ? 'Clean all user data' : '清除所有使用者資料';
         }
 
         function escapeText(value) {
@@ -288,6 +300,43 @@
             }
         }
 
+        async function adminPost(path) {
+            const response = await fetch(apiUrl(path), {
+                method: 'POST',
+                headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            if (!response.ok) throw new Error(String(response.status));
+            return response.json();
+        }
+
+        async function cleanAllUsers() {
+            const first = language === 'en'
+                ? 'This will erase every child\'s saved information, drawings, activity answers, and creativity scores. Do you want to continue?'
+                : '這會清除所有參加者已保存的資料、圖畫、活動答案和創意分數。要繼續嗎？';
+            if (!window.confirm(first)) return;
+            const second = language === 'en'
+                ? 'Please confirm again. Cleaning all user data cannot be undone. Clean all user data now?'
+                : '請再確認一次。清除所有使用者資料後無法復原。現在清除嗎？';
+            if (!window.confirm(second)) return;
+            const status = document.getElementById('cleanStatus');
+            status.textContent = language === 'en' ? 'Cleaning...' : '正在清除...';
+            try {
+                await adminPost('/api/admin/clear-users');
+                document.getElementById('userRecord').innerHTML = language === 'en'
+                    ? '<p class="muted">Choose a name to see what that child saved.</p>'
+                    : '<p class="muted">請選擇一個名字，查看該參加者保存的內容。</p>';
+                await loadUsers();
+                status.textContent = language === 'en'
+                    ? 'All user data has been cleaned.'
+                    : '所有使用者資料已清除。';
+            } catch (error) {
+                status.textContent = language === 'en'
+                    ? 'The record book could not be cleaned. Keep the computer on and try again.'
+                    : '未能清除記錄冊。請保持電腦開機，然後再試。';
+            }
+        }
+
         async function loadUsers() {
             const data = await adminGet('/api/admin/users');
             const users = data.users || [];
@@ -341,6 +390,7 @@
             language = language === 'en' ? 'zh' : 'en';
             applyLanguage();
         });
+        document.getElementById('cleanUsersBtn').addEventListener('click', cleanAllUsers);
         document.getElementById('logoutBtn').addEventListener('click', function () {
             authHeader = '';
             sessionStorage.removeItem('cc_admin_auth');
