@@ -167,8 +167,8 @@
         let body = '';
         if (!pre) {
             body = langPair(
-                '<p class="aut-lead">Before the activities, write new uses for a book and a sticky note. The usual use does not count. Empty boxes are allowed.</p>',
-                '<p class="aut-lead">在活動開始前，請為書和便利貼寫下新用途。一般用途不算。空白的格子可以留空。</p>'
+                '<p class="aut-lead">Before the activities, write new uses for two daily objects. The usual use does not count. Empty boxes are allowed.</p>',
+                '<p class="aut-lead">在活動開始前，請為兩件日常物品寫下新用途。一般用途不算。空白的格子可以留空。</p>'
             ) + '<div class="aut-actions"><button class="btn btn-primary" id="autStartPre"><i class="fas fa-pencil-alt"></i> ' +
                 langPair('Start the creativity check', '開始創意測試') + '</button></div>';
         } else if (!trainingComplete()) {
