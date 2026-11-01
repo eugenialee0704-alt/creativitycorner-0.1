@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://wallpapers-advertisement-petition-moral.trycloudflare.com";
+window.CREATIVITY_API = "https://anniversary-tip-treating-premiere.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
