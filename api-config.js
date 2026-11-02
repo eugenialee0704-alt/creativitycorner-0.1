@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://camps-hudson-friday-weapon.trycloudflare.com";
+window.CREATIVITY_API = "https://counters-instrumental-relay-enables.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
