@@ -12,6 +12,13 @@ publish_url() {
     local url="$1"
     printf '%s\n' "$url" > "$URLFILE"
     (
+        if [[ -d "$LOCK" ]]; then
+            now=$(date +%s)
+            mtime=$(stat -f %m "$LOCK" 2>/dev/null || echo 0)
+            if [[ $((now - mtime)) -gt 90 ]]; then
+                rmdir "$LOCK" 2>/dev/null || true
+            fi
+        fi
         if ! mkdir "$LOCK" 2>/dev/null; then
             exit 0
         fi
@@ -39,6 +46,7 @@ env.update({
     "GIT_AUTHOR_EMAIL": "eugenialee0704-alt@users.noreply.github.com",
     "GIT_COMMITTER_NAME": "eugenialee0704-alt",
     "GIT_COMMITTER_EMAIL": "eugenialee0704-alt@users.noreply.github.com",
+    "GIT_TERMINAL_PROMPT": "0",
 })
 subprocess.run(
     ["git", "add", "--", "api-config.js"],
@@ -62,7 +70,7 @@ committed = subprocess.run(
 )
 if committed.returncode != 0:
     sys.exit(0)
-subprocess.run(
+pushed = subprocess.run(
     [
         "git",
         "-c",
@@ -74,7 +82,15 @@ subprocess.run(
     cwd=root,
     env=env,
     check=False,
+    capture_output=True,
+    text=True,
 )
+if pushed.stdout:
+    print(pushed.stdout, end="")
+if pushed.stderr:
+    print(pushed.stderr, end="")
+if pushed.returncode != 0:
+    sys.exit(pushed.returncode)
 PY
     ) &
 }
@@ -119,7 +135,7 @@ trap 'cleanup; exit 1' TERM INT
     if [[ "$line" =~ https://[A-Za-z0-9]+(-[A-Za-z0-9]+)+\.trycloudflare\.com ]]; then
         publish_url "${BASH_REMATCH[0]}"
     fi
-    if [[ "$line" == *"Tunnel not found"* || "$line" == *"no recent network activity"* || "$line" == *"control stream error"* || "$line" == *"failed to request quick Tunnel"* || "$line" == *"Connection terminated"* ]]; then
+    if [[ "$line" == *"Tunnel not found"* || "$line" == *"failed to request quick Tunnel"* ]]; then
         kill "$PARENT" 2>/dev/null || true
         exit 1
     fi
