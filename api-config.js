@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://extent-continues-educational-wayne.trycloudflare.com";
+window.CREATIVITY_API = "https://actually-thru-cable-ocean.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
@@ -19,4 +19,8 @@ async function refreshCreativityApi() {
     } catch (error) {
         return false;
     }
+}
+
+if (typeof location !== "undefined" && location.hostname.endsWith("github.io")) {
+    refreshCreativityApi();
 }
