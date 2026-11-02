@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://movers-steam-favorites-signal.trycloudflare.com";
+window.CREATIVITY_API = "https://reputation-criteria-transactions-frank.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
