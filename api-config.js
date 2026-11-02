@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://lender-prefers-portable-fri.trycloudflare.com";
+window.CREATIVITY_API = "https://reliance-desirable-giant-orchestra.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
