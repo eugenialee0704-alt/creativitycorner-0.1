@@ -159,8 +159,25 @@
             });
         }
 
+        async function adminFetch(path, options, refreshed) {
+            let response;
+            try {
+                response = await fetch(apiUrl(path), options);
+            } catch (error) {
+                if (!refreshed && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+                    return adminFetch(path, options, true);
+                }
+                throw new Error('0');
+            }
+            if (!response.ok && !refreshed && (response.status === 502 || response.status === 503 || response.status === 530) &&
+                typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+                return adminFetch(path, options, true);
+            }
+            return response;
+        }
+
         async function adminGet(path) {
-            const response = await fetch(apiUrl(path), { headers: { Authorization: authHeader } });
+            const response = await adminFetch(path, { headers: { Authorization: authHeader } });
             if (!response.ok) throw new Error(String(response.status));
             return response.json();
         }
@@ -301,7 +318,7 @@
         }
 
         async function adminPost(path) {
-            const response = await fetch(apiUrl(path), {
+            const response = await adminFetch(path, {
                 method: 'POST',
                 headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
                 body: '{}'

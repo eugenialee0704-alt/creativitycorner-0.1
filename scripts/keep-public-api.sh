@@ -79,13 +79,48 @@ PY
     ) &
 }
 
-"$CLOUDFLARED" tunnel --url http://127.0.0.1:8765 --no-autoupdate 2>&1 | while IFS= read -r line; do
+PARENT=$$
+
+# A quiet public page request keeps the link from being closed for inactivity.
+# If the link stays closed, stop this copy so a fresh one can start.
+(
+    fails=0
+    while true; do
+        sleep 20
+        url=""
+        if [[ -f "$URLFILE" ]]; then
+            url=$(cat "$URLFILE")
+        fi
+        if [[ -z "$url" ]]; then
+            continue
+        fi
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$url/index.html" || true)
+        if [[ "$code" == "200" ]]; then
+            fails=0
+        else
+            fails=$((fails + 1))
+        fi
+        if [[ "$fails" -ge 3 ]]; then
+            kill "$PARENT" 2>/dev/null || true
+            exit 1
+        fi
+    done
+) &
+WATCH=$!
+cleanup() {
+    kill "$WATCH" 2>/dev/null || true
+    pkill -P "$$" -f "cloudflared tunnel --url http://127.0.0.1:8765" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'cleanup; exit 1' TERM INT
+
+"$CLOUDFLARED" tunnel --url http://127.0.0.1:8765 --no-autoupdate --grace-period 1s 2>&1 | while IFS= read -r line; do
     printf '%s\n' "$line"
     if [[ "$line" =~ https://[A-Za-z0-9]+(-[A-Za-z0-9]+)+\.trycloudflare\.com ]]; then
         publish_url "${BASH_REMATCH[0]}"
     fi
-    if [[ "$line" == *"Tunnel not found"* ]]; then
-        pkill -f "cloudflared tunnel --url http://127.0.0.1:8765" || true
+    if [[ "$line" == *"Tunnel not found"* || "$line" == *"no recent network activity"* || "$line" == *"control stream error"* || "$line" == *"failed to request quick Tunnel"* || "$line" == *"Connection terminated"* ]]; then
+        kill "$PARENT" 2>/dev/null || true
         exit 1
     fi
 done

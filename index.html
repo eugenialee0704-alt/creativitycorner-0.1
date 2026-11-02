@@ -2683,7 +2683,7 @@ const puzzleImages = {
         if (text) message.scrollIntoView({ block: 'center' });
     }
 
-    async function postJson(path, body) {
+    async function postJson(path, body, refreshed) {
         const controller = new AbortController();
         const timer = setTimeout(function () { controller.abort(); }, 20000);
         let res;
@@ -2695,11 +2695,18 @@ const puzzleImages = {
                 signal: controller.signal
             });
         } catch (error) {
-            throw new Error('Request failed: 0');
-        } finally {
             clearTimeout(timer);
+            if (!refreshed && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+                return postJson(path, body, true);
+            }
+            throw new Error('Request failed: 0');
         }
+        clearTimeout(timer);
         if (!res.ok) {
+            if (!refreshed && (res.status === 502 || res.status === 503 || res.status === 530) &&
+                typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+                return postJson(path, body, true);
+            }
             const text = await res.text().catch(() => '');
             throw new Error(`Request failed: ${res.status} ${text}`);
         }
@@ -3169,7 +3176,13 @@ const puzzleImages = {
             showAuthMessage('');
             await openSignedIn(data, false);
         } catch (error) {
-            showAuthMessage(explainAccountProblem(accountProblem(error)), true);
+            if (requestStatus(error) === 0) {
+                showAuthMessage(currentLanguage === 'en'
+                    ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
+                    : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。', true);
+            } else {
+                showAuthMessage(explainAccountProblem(accountProblem(error)), true);
+            }
         } finally {
             if (signUpButton) {
                 signUpButton.disabled = false;
@@ -3196,7 +3209,13 @@ const puzzleImages = {
             showAuthMessage('');
             await openSignedIn(data, true);
         } catch (error) {
-            showAuthMessage(explainAccountProblem(accountProblem(error) || 'sign-in-failed'), true);
+            if (requestStatus(error) === 0) {
+                showAuthMessage(currentLanguage === 'en'
+                    ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
+                    : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。', true);
+            } else {
+                showAuthMessage(explainAccountProblem(accountProblem(error) || 'sign-in-failed'), true);
+            }
         }
     }
 

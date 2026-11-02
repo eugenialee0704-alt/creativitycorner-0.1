@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.creativitycorner.api-watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/eugenialee/.local/bin/creativity-api-watchdog.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>120</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/eugenialee/Library/Logs/creativity-corner-watchdog.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/eugenialee/Library/Logs/creativity-corner-watchdog.log</string>
+</dict>
+</plist>
