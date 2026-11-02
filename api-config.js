@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://arm-declaration-also-bedroom.trycloudflare.com";
+window.CREATIVITY_API = "https://avatar-panels-bugs-stack.trycloudflare.com";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");
