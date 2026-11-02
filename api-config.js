@@ -9,7 +9,12 @@ function apiUrl(path) {
 async function refreshCreativityApi() {
     if (!location.hostname.endsWith("github.io")) return false;
     try {
-        var response = await fetch("api-config.js?v=" + Date.now(), { cache: "no-store" });
+        var response = await Promise.race([
+            fetch("api-config.js?v=" + Date.now(), { cache: "no-store" }),
+            new Promise(function (_, reject) {
+                setTimeout(function () { reject(new Error("timeout")); }, 5000);
+            })
+        ]);
         if (!response.ok) return false;
         var text = await response.text();
         var match = text.match(/window\.CREATIVITY_API = "([^"]+)"/);

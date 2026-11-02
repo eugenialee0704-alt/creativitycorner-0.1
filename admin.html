@@ -23,6 +23,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
             gap: 16px;
             padding: 18px 24px;
             background: linear-gradient(90deg, var(--pink), #c9a0dc 55%, var(--teal));
@@ -38,6 +39,8 @@
             font: inherit;
             font-weight: 700;
             cursor: pointer;
+            touch-action: manipulation;
+            min-height: 44px;
         }
         .primary { background: white; color: var(--pink); }
         .quiet { background: rgba(255,255,255,0.2); color: white; }
@@ -55,6 +58,8 @@
             border: 2px solid #eee;
             border-radius: 12px;
             font: inherit;
+            font-size: 16px;
+            touch-action: manipulation;
         }
         .error { color: #b42318; min-height: 1.2em; margin-top: 10px; }
         .layout { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
@@ -114,14 +119,16 @@
         <section class="card" id="loginCard">
             <h2 class="lang-en">Admin sign in</h2>
             <h2 class="lang-zh hidden">管理員登入</h2>
-            <label class="lang-en" for="username">Username</label>
-            <label class="lang-zh hidden" for="username">用戶名</label>
-            <input id="username" autocomplete="username">
-            <label class="lang-en" for="password">Password</label>
-            <label class="lang-zh hidden" for="password">密碼</label>
-            <input id="password" type="password" autocomplete="current-password">
-            <p class="error" id="loginError"></p>
-            <button class="primary" id="loginBtn" type="button">Sign in</button>
+            <form id="loginForm">
+                <label class="lang-en" for="username">Username</label>
+                <label class="lang-zh hidden" for="username">用戶名</label>
+                <input id="username" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+                <label class="lang-en" for="password">Password</label>
+                <label class="lang-zh hidden" for="password">密碼</label>
+                <input id="password" name="password" type="password" autocomplete="current-password">
+                <p class="error" id="loginError"></p>
+                <button class="primary" id="loginBtn" type="submit">Sign in</button>
+            </form>
         </section>
         <section class="layout hidden" id="records">
             <div>
@@ -167,9 +174,16 @@
         }
 
         async function adminFetch(path, options, refreshed) {
+            const request = Object.assign({ cache: 'no-store' }, options || {});
+            const headers = Object.assign({}, request.headers || {});
+            if (authHeader) {
+                headers.Authorization = authHeader;
+                headers['X-CC-Admin'] = authHeader;
+            }
+            request.headers = headers;
             let response;
             try {
-                response = await fetch(apiUrl(path), Object.assign({ cache: 'no-store' }, options));
+                response = await fetch(apiUrl(path), request);
             } catch (error) {
                 if (refreshed !== 'again' && refreshed !== true) {
                     await new Promise(function (resolve) { setTimeout(resolve, 700); });
@@ -388,9 +402,21 @@
             showRecords();
         }
 
+        function typedValue(id) {
+            return String((document.getElementById(id) || {}).value || '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .trim();
+        }
+
         async function signIn() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
+            const username = typedValue('username');
+            const password = typedValue('password');
+            if (!username || !password) {
+                document.getElementById('loginError').textContent = language === 'en'
+                    ? 'Please enter the username and password.'
+                    : '請輸入用戶名和密碼。';
+                return;
+            }
             if (typeof refreshCreativityApi === 'function') {
                 try { await refreshCreativityApi(); } catch (ignore) {}
             }
@@ -413,9 +439,9 @@
             }
         }
 
-        document.getElementById('loginBtn').addEventListener('click', signIn);
-        document.getElementById('password').addEventListener('keydown', function (event) {
-            if (event.key === 'Enter') signIn();
+        document.getElementById('loginForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            signIn();
         });
         document.getElementById('langBtn').addEventListener('click', function () {
             language = language === 'en' ? 'zh' : 'en';

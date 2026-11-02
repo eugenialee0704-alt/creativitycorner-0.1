@@ -956,7 +956,7 @@ class RecordHandler(SimpleHTTPRequestHandler):
         if origin == "https://eugenialee0704-alt.github.io":
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CC-Admin")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -1003,12 +1003,18 @@ class RecordHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def admin_ok(self):
-        header = self.headers.get("Authorization") or ""
-        if not header.startswith("Basic "):
+        # iPad Safari often removes the Authorization header on the way to this computer.
+        # X-CC-Admin carries the same sign-in value.
+        header = self.headers.get("X-CC-Admin") or self.headers.get("Authorization") or ""
+        if header.startswith("Basic "):
+            token = header[6:].strip()
+        else:
+            token = header.strip()
+        if not token:
             self.send_json(401, {"error": "Login required"})
             return False
         try:
-            decoded = base64.b64decode(header[6:].strip()).decode("utf-8")
+            decoded = base64.b64decode(token).decode("utf-8")
         except (ValueError, UnicodeDecodeError):
             self.send_json(401, {"error": "Login required"})
             return False
