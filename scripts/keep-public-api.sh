@@ -95,14 +95,31 @@ PY
     ) &
 }
 
-PARENT=$$
+# Ask the public link for a page often enough that it is not closed for inactivity.
+# This loop must not stop the link. A separate check starts a new one only when
+# the link is really closed.
+probe_public() {
+    local url="$1"
+    local host ip
+    host="${url#https://}"
+    host="${host%%/*}"
+    ip=$(/usr/bin/dig +time=2 +tries=1 +short A "$host" @1.1.1.1 2>/dev/null | /usr/bin/awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')
+    if [[ -z "$ip" ]]; then
+        ip=$(/usr/bin/dig +time=2 +tries=1 +short A "$host" @8.8.8.8 2>/dev/null | /usr/bin/awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')
+    fi
+    if [[ -z "$ip" ]]; then
+        printf '000'
+        return
+    fi
+    /usr/bin/curl -s -o /dev/null -w "%{http_code}" --max-time 12 \
+        -H "Cache-Control: no-cache" \
+        --resolve "${host}:443:${ip}" \
+        "https://${host}/index.html?ping=$(date +%s)" || true
+}
 
-# A quiet public page request keeps the link from being closed for inactivity.
-# If the link stays closed, stop this copy so a fresh one can start.
 (
-    fails=0
     while true; do
-        sleep 20
+        sleep 25
         url=""
         if [[ -f "$URLFILE" ]]; then
             url=$(cat "$URLFILE")
@@ -110,19 +127,11 @@ PARENT=$$
         if [[ -z "$url" ]]; then
             continue
         fi
-        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$url/index.html" || true)
-        if [[ "$code" == "200" ]]; then
-            fails=0
-        else
-            fails=$((fails + 1))
-        fi
-        if [[ "$fails" -ge 3 ]]; then
-            kill "$PARENT" 2>/dev/null || true
-            exit 1
-        fi
+        printf 'ping %s\n' "$(probe_public "$url")"
     done
 ) &
 WATCH=$!
+disown "$WATCH" 2>/dev/null || true
 cleanup() {
     kill "$WATCH" 2>/dev/null || true
     pkill -P "$$" -f "cloudflared tunnel --url http://127.0.0.1:8765" 2>/dev/null || true
@@ -134,9 +143,5 @@ trap 'cleanup; exit 1' TERM INT
     printf '%s\n' "$line"
     if [[ "$line" =~ https://[A-Za-z0-9]+(-[A-Za-z0-9]+)+\.trycloudflare\.com ]]; then
         publish_url "${BASH_REMATCH[0]}"
-    fi
-    if [[ "$line" == *"Tunnel not found"* || "$line" == *"failed to request quick Tunnel"* ]]; then
-        kill "$PARENT" 2>/dev/null || true
-        exit 1
     fi
 done

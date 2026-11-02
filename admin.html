@@ -159,17 +159,28 @@
             });
         }
 
+        function basicAuthHeader(username, password) {
+            const bytes = new TextEncoder().encode(username + ':' + password);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return 'Basic ' + btoa(binary);
+        }
+
         async function adminFetch(path, options, refreshed) {
             let response;
             try {
-                response = await fetch(apiUrl(path), options);
+                response = await fetch(apiUrl(path), Object.assign({ cache: 'no-store' }, options));
             } catch (error) {
-                if (!refreshed && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+                if (refreshed !== 'again' && refreshed !== true) {
+                    await new Promise(function (resolve) { setTimeout(resolve, 700); });
+                    return adminFetch(path, options, 'again');
+                }
+                if (refreshed !== true && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
                     return adminFetch(path, options, true);
                 }
                 throw new Error('0');
             }
-            if (!response.ok && !refreshed && (response.status === 502 || response.status === 503 || response.status === 530) &&
+            if (!response.ok && refreshed !== true && (response.status === 502 || response.status === 503 || response.status === 530) &&
                 typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
                 return adminFetch(path, options, true);
             }
@@ -380,7 +391,10 @@
         async function signIn() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            authHeader = 'Basic ' + btoa(username + ':' + password);
+            if (typeof refreshCreativityApi === 'function') {
+                try { await refreshCreativityApi(); } catch (ignore) {}
+            }
+            authHeader = basicAuthHeader(username, password);
             try {
                 await loadUsers();
                 sessionStorage.setItem('cc_admin_auth', authHeader);

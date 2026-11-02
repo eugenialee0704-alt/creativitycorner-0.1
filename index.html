@@ -2692,18 +2692,23 @@ const puzzleImages = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                signal: controller.signal
+                signal: controller.signal,
+                cache: 'no-store'
             });
         } catch (error) {
             clearTimeout(timer);
-            if (!refreshed && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
+            if (refreshed !== 'again' && refreshed !== true) {
+                await new Promise(function (resolve) { setTimeout(resolve, 700); });
+                return postJson(path, body, 'again');
+            }
+            if (refreshed !== true && typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
                 return postJson(path, body, true);
             }
             throw new Error('Request failed: 0');
         }
         clearTimeout(timer);
         if (!res.ok) {
-            if (!refreshed && (res.status === 502 || res.status === 503 || res.status === 530) &&
+            if (refreshed !== true && (res.status === 502 || res.status === 503 || res.status === 530) &&
                 typeof refreshCreativityApi === 'function' && await refreshCreativityApi()) {
                 return postJson(path, body, true);
             }
@@ -3162,6 +3167,9 @@ const puzzleImages = {
             signUpButton.textContent = currentLanguage === 'en' ? 'Saving...' : '正在保存...';
         }
         showAuthMessage(currentLanguage === 'en' ? 'Saving your account...' : '正在保存帳戶...');
+        if (typeof refreshCreativityApi === 'function') {
+            try { await refreshCreativityApi(); } catch (ignore) {}
+        }
         try {
             const data = await postJson('/api/public/sign-up', {
                 name: name,
@@ -3201,6 +3209,9 @@ const puzzleImages = {
             return;
         }
         showAuthMessage(currentLanguage === 'en' ? 'Signing in...' : '正在登入...');
+        if (typeof refreshCreativityApi === 'function') {
+            try { await refreshCreativityApi(); } catch (ignore) {}
+        }
         try {
             const data = await postJson('/api/public/sign-in', {
                 username: username,
