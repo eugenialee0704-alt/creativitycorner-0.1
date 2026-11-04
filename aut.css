@@ -305,6 +305,15 @@
     font-weight: 700;
 }
 
+.aut-submit-busy {
+    cursor: wait;
+    animation: aut-submit-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes aut-submit-pulse {
+    50% { opacity: 0.62; }
+}
+
 .aut-admin-panel {
     margin: 20px;
 }

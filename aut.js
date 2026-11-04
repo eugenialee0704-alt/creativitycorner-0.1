@@ -26,6 +26,7 @@
     };
     let timerId = null;
     let submitLock = false;
+    let pendingActivityInvite = false;
 
     function scoreApi() {
         return window.AutScore;
@@ -520,7 +521,14 @@
         }
         submitLock = true;
         stopTimer();
-        if (button) button.disabled = true;
+        if (button) {
+            button.disabled = true;
+            button.classList.add('aut-submit-busy');
+            button.setAttribute('aria-busy', 'true');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ' +
+                langSpan('Checking your ideas...', '正在閱讀你的想法...');
+            button.scrollIntoView({ block: 'center' });
+        }
         document.querySelectorAll('#autStage input').forEach(function (input) { input.disabled = true; });
         document.getElementById('autStage').insertAdjacentHTML('beforeend',
             '<div class="aut-checking" id="autChecking">' +
@@ -542,7 +550,7 @@
         sessionStorage.removeItem(timerKey(phase));
         syncAut(record[phase]);
         renderArchive(phase);
-        if (phase === 'pre') showActivityInvite();
+        if (phase === 'pre') pendingActivityInvite = true;
         if (phase === 'post') showScoreResult();
     }
 
@@ -864,6 +872,10 @@
             applyActivityLocks();
             originalShow();
             renderDashboardCard();
+            if (pendingActivityInvite) {
+                pendingActivityInvite = false;
+                showActivityInvite();
+            }
         };
 
         const originalHide = hideAllSections;
