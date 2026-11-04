@@ -590,6 +590,19 @@ Deno.serve(async (request) => {
       const { data } = await supabase.from("users").select("*").order("joined_date");
       return jsonResponse(200, { users: (data ?? []).map((row) => userPublic(row)) }, origin);
     }
+    if (request.method === "POST" && path === "/api/admin/delete-user") {
+      const userId = String(body.userId ?? "").trim();
+      if (!userId) return jsonResponse(400, { error: "missing-user" }, origin);
+      const { data: existing } = await supabase.from("users").select("id").eq("id", userId).maybeSingle();
+      if (!existing) return jsonResponse(404, { error: "User not found" }, origin);
+      await supabase.from("submissions").delete().eq("user_id", userId);
+      await supabase.from("consents").delete().eq("user_id", userId);
+      await supabase.from("sessions").delete().eq("user_id", userId);
+      const { error } = await supabase.from("users").delete().eq("id", userId);
+      if (error) return jsonResponse(500, { error: "delete-failed" }, origin);
+      await supabase.storage.from("drawings").remove([`${userId}.png`]);
+      return jsonResponse(200, { deleted: true }, origin);
+    }
     if (request.method === "POST" && path === "/api/admin/clear-users") {
       await supabase.from("submissions").delete().neq("user_id", "");
       await supabase.from("consents").delete().neq("user_id", "");

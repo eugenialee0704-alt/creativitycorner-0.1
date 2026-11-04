@@ -86,6 +86,7 @@
             background: #b42318;
             color: white;
         }
+        .delete-user { width: auto; }
         .clean-status { min-height: 1.2em; margin: 0 0 12px; font-weight: 700; color: #b42318; }
         img.drawing, img.signature {
             display: block;
@@ -146,6 +147,7 @@
     <script>
         let language = 'en';
         let authHeader = sessionStorage.getItem('cc_admin_auth') || '';
+        let selectedUser = null;
 
         function applyLanguage() {
             document.querySelectorAll('.lang-en').forEach(function (el) {
@@ -278,6 +280,9 @@
             const drawing = details.drawingDataUrl || ((byId[1] || {}).metadata || {}).animalDrawingDataUrl || '';
             const signature = consent.participantSignatureDataUrl || '';
             let html = '<h2>' + escapeText(user.name || 'Participant') + '</h2>';
+            html += '<button class="danger delete-user" id="deleteUserBtn" type="button">' +
+                '<span class="lang-en">Delete this user</span><span class="lang-zh">刪除這位使用者</span></button>';
+            html += '<p class="clean-status" id="deleteStatus"></p>';
             html += '<h3>Personal information</h3>';
             html += field('Name', user.name);
             html += field('Username', user.username);
@@ -332,21 +337,61 @@
                 item.classList.remove('selected');
             });
             if (button) button.classList.add('selected');
+            selectedUser = user;
             const record = document.getElementById('userRecord');
             record.innerHTML = '<p class="muted">Loading...</p>';
             try {
                 const details = await adminGet('/api/admin/users/' + encodeURIComponent(user.id));
+                selectedUser = (details.user || user);
                 record.innerHTML = renderRecord(details);
+                applyLanguage();
+                const deleteButton = document.getElementById('deleteUserBtn');
+                if (deleteButton) deleteButton.addEventListener('click', deleteSelectedUser);
             } catch (error) {
                 record.innerHTML = '<p class="error">Could not load this record.</p>';
             }
         }
 
-        async function adminPost(path) {
+        async function deleteSelectedUser() {
+            const user = selectedUser;
+            if (!user || !user.id) return;
+            const name = String(user.name || user.username || '').trim() ||
+                (language === 'en' ? 'this user' : '這位使用者');
+            const first = language === 'en'
+                ? 'Delete this user only: ' + name + '? This removes their saved information, drawing, activity answers, and creativity scores. Other users stay.'
+                : '只刪除這位使用者：' + name + '？這會清除這位使用者已保存的資料、圖畫、活動答案和創意分數。其他使用者會保留。';
+            if (!window.confirm(first)) return;
+            const second = language === 'en'
+                ? 'Please confirm again. Deleting this user cannot be undone. Delete ' + name + ' now?'
+                : '請再確認一次。刪除後無法復原。現在刪除 ' + name + ' 嗎？';
+            if (!window.confirm(second)) return;
+            const status = document.getElementById('deleteStatus');
+            const button = document.getElementById('deleteUserBtn');
+            if (button) button.disabled = true;
+            if (status) status.textContent = language === 'en' ? 'Deleting...' : '正在刪除...';
+            try {
+                await adminPost('/api/admin/delete-user', { userId: user.id });
+                selectedUser = null;
+                document.getElementById('userRecord').innerHTML = language === 'en'
+                    ? '<p class="muted">Choose a name to see what that child saved.</p>'
+                    : '<p class="muted">請選擇一個名字，查看該參加者保存的內容。</p>';
+                await loadUsers();
+                document.getElementById('cleanStatus').textContent = language === 'en'
+                    ? name + ' has been deleted. Other users are still saved.'
+                    : name + ' 已刪除。其他使用者仍然保存。';
+            } catch (error) {
+                if (button) button.disabled = false;
+                if (status) status.textContent = language === 'en'
+                    ? 'This user could not be deleted. Check the internet connection, then try again.'
+                    : '未能刪除這位使用者。請檢查網絡連線，然後再試。';
+            }
+        }
+
+        async function adminPost(path, payload) {
             const response = await adminFetch(path, {
                 method: 'POST',
                 headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-                body: '{}'
+                body: JSON.stringify(payload || {})
             });
             if (!response.ok) throw new Error(String(response.status));
             return response.json();

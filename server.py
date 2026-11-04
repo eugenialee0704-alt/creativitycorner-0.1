@@ -920,6 +920,25 @@ def clear_all_users():
     return 200, {"cleared": True}
 
 
+def delete_user(user_id):
+    user_id = str(user_id or "").strip()
+    if not user_id:
+        return 400, {"error": "missing-user"}
+    with connect() as connection:
+        row = connection.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not row:
+            return 404, {"error": "User not found"}
+        connection.execute("DELETE FROM submissions WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM consents WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        write_records(connection)
+    drawing = os.path.join(DRAWING_DIR, user_id + ".png")
+    if os.path.isfile(drawing):
+        os.remove(drawing)
+    return 200, {"deleted": True}
+
+
 def user_details(user_id):
     with connect() as connection:
         row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -1109,6 +1128,16 @@ class RecordHandler(SimpleHTTPRequestHandler):
             if not self.admin_ok():
                 return
             status, payload = clear_all_users()
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/admin/delete-user":
+            body = self.read_json()
+            if not self.admin_ok():
+                return
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = delete_user(body.get("userId"))
             self.send_json(status, payload)
             return
         prefix = "/api/admin/users/"
