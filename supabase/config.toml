@@ -1,0 +1,4 @@
+project_id = "qjstkukupyornrwyruxn"
+
+[functions.creativity-api]
+verify_jwt = false

@@ -3243,8 +3243,8 @@ const puzzleImages = {
         } catch (error) {
             if (requestStatus(error) === 0) {
                 showAuthMessage(currentLanguage === 'en'
-                    ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
-                    : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。', true);
+                    ? 'The record book could not be opened. Check the internet connection, then try again.'
+                    : '未能開啟記錄冊。請檢查網絡連線，然後再試。', true);
             } else {
                 showAuthMessage(explainAccountProblem(accountProblem(error)), true);
             }
@@ -3279,8 +3279,8 @@ const puzzleImages = {
         } catch (error) {
             if (requestStatus(error) === 0) {
                 showAuthMessage(currentLanguage === 'en'
-                    ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
-                    : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。', true);
+                    ? 'The record book could not be opened. Check the internet connection, then try again.'
+                    : '未能開啟記錄冊。請檢查網絡連線，然後再試。', true);
             } else {
                 showAuthMessage(explainAccountProblem(accountProblem(error) || 'sign-in-failed'), true);
             }

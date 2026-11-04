@@ -2,6 +2,13 @@
 # Keep a public address open so the GitHub website can save answers
 # on this computer. If the address changes, publish the new one.
 set -u
+# The record book now lives on Supabase. Starting a laptop tunnel would
+# replace that address and break sign-in when the lid is closed.
+if [[ -f "$HOME/Library/Logs/creativity-api-supabase.txt" ]]; then
+    while true; do
+        sleep 3600
+    done
+fi
 ROOT="/Users/eugenialee/Downloads/Creativity Training Website (AI creativity chatbot)"
 CLOUDFLARED="$HOME/.local/bin/cloudflared"
 CONFIG="$ROOT/api-config.js"
@@ -10,6 +17,9 @@ URLFILE="$HOME/Library/Logs/creativity-api-url.txt"
 
 publish_url() {
     local url="$1"
+    if [[ -f "$HOME/Library/Logs/creativity-api-supabase.txt" ]]; then
+        return 0
+    fi
     printf '%s\n' "$url" > "$URLFILE"
     (
         if [[ -d "$LOCK" ]]; then

@@ -1,4 +1,4 @@
-window.CREATIVITY_API = "https://cigarette-cardiovascular-forming-challenges.trycloudflare.com";
+window.CREATIVITY_API = "https://qjstkukupyornrwyruxn.supabase.co/functions/v1/creativity-api";
 
 function apiUrl(path) {
     var base = String(window.CREATIVITY_API || "").replace(/\/$/, "");

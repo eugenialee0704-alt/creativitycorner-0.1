@@ -9,6 +9,11 @@ if ! curl -sf --max-time 5 -o /dev/null http://127.0.0.1:8765/index.html; then
     launchctl kickstart -k "gui/${UID_NUM}/com.creativitycorner.website" || true
 fi
 
+# Sign-in no longer uses the laptop tunnel. Leave that address alone.
+if [[ -f "$HOME/Library/Logs/creativity-api-supabase.txt" ]]; then
+    exit 0
+fi
+
 if [[ ! -f "$URLFILE" ]]; then
     launchctl kickstart -k "gui/${UID_NUM}/com.creativitycorner.publicapi" || true
     exit 0

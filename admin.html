@@ -374,8 +374,8 @@
                     : '所有使用者資料已清除。';
             } catch (error) {
                 status.textContent = language === 'en'
-                    ? 'The record book could not be cleaned. Keep the computer on and try again.'
-                    : '未能清除記錄冊。請保持電腦開機，然後再試。';
+                    ? 'The record book could not be cleaned. Check the internet connection, then try again.'
+                    : '未能清除記錄冊。請檢查網絡連線，然後再試。';
             }
         }
 
@@ -434,8 +434,8 @@
                         ? 'That username or password is not correct.'
                         : '用戶名或密碼不正確。')
                     : (language === 'en'
-                        ? 'The record book on this computer could not be opened. Keep the computer on and connected to the internet, then try again.'
-                        : '未能開啟這部電腦上的記錄冊。請保持電腦開機並連接網絡，然後再試。');
+                        ? 'The record book could not be opened. Check the internet connection, then try again.'
+                        : '未能開啟記錄冊。請檢查網絡連線，然後再試。');
             }
         }
 
