@@ -74,9 +74,12 @@ PY
     fi
     exit 0
 fi
-# A phone often cannot find a brand-new address for a minute. Do not replace
-# the address just because this computer's own name lookup failed.
-if [[ "$code" == "000" || "$age" -lt 120 ]]; then
+# A brand-new address can take a minute to appear. An older address that no
+# longer has a name is closed, so count that and open a fresh one.
+if [[ "$code" == "000" && "$age" -lt 180 ]]; then
+    exit 0
+fi
+if [[ "$age" -lt 120 ]]; then
     exit 0
 fi
 fails=$(cat "$FAILFILE" 2>/dev/null || echo 0)

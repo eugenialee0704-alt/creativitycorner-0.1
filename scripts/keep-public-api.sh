@@ -139,9 +139,14 @@ cleanup() {
 trap cleanup EXIT
 trap 'cleanup; exit 1' TERM INT
 
+PARENT=$$
 "$CLOUDFLARED" tunnel --url http://127.0.0.1:8765 --no-autoupdate --grace-period 1s 2>&1 | while IFS= read -r line; do
     printf '%s\n' "$line"
     if [[ "$line" =~ https://[A-Za-z0-9]+(-[A-Za-z0-9]+)+\.trycloudflare\.com ]]; then
         publish_url "${BASH_REMATCH[0]}"
+    fi
+    if [[ "$line" == *"Tunnel not found"* || "$line" == *"failed to request quick Tunnel"* ]]; then
+        kill "$PARENT" 2>/dev/null || true
+        exit 1
     fi
 done
