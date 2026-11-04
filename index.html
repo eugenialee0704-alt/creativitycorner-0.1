@@ -29,12 +29,16 @@
             box-sizing: border-box;
         }
         
+        html {
+            font-size: var(--font-size-base);
+        }
+
         body {
             font-family: 'Nunito', sans-serif;
             background-color: var(--light-color);
             color: var(--dark-color);
             overflow-x: hidden;
-            font-size: var(--font-size-base); /* Use variable for font size */
+            font-size: var(--font-size-base);
         }
         
         h1, h2, h3, h4 {
@@ -1641,7 +1645,7 @@
 
 .close-modal {
     color: white;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s;
@@ -3121,7 +3125,9 @@ const puzzleImages = {
 
     // Update font size
     function updateFontSize(size) {
+        document.documentElement.classList.remove('font-small', 'font-medium', 'font-large', 'font-xlarge');
         document.body.classList.remove('font-small', 'font-medium', 'font-large', 'font-xlarge');
+        document.documentElement.classList.add(`font-${size}`);
         document.body.classList.add(`font-${size}`);
         
         fontButtons.forEach(btn => btn.classList.remove('active'));
