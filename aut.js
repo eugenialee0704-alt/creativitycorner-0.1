@@ -721,13 +721,10 @@
             langPair('<h3>Response archive</h3>', '<h3>回答紀錄</h3>') +
             langPair('<p class="aut-note">Every answer is saved here, including boxes that were left empty.</p>',
                 '<p class="aut-note">每個答案都會保存在這裡，包括留空的格子。</p>') +
-            '<div class="aut-layout"><div class="aut-archive-list">' + list + improvementButton + '</div><div id="autDetail"></div></div>' +
-            '<div class="aut-actions"><button class="btn btn-secondary" id="autDownload" type="button"><i class="fas fa-download"></i> ' +
-            langPair('Download archive', '下載紀錄') + '</button></div></div>';
+            '<div class="aut-layout"><div class="aut-archive-list">' + list + improvementButton + '</div><div id="autDetail"></div></div></div>';
         document.getElementById('autBack').addEventListener('click', function () {
             if (typeof showDashboard === 'function') showDashboard();
         });
-        document.getElementById('autDownload').addEventListener('click', downloadArchive);
         document.querySelectorAll('.aut-archive-item').forEach(function (button) {
             button.addEventListener('click', function () { renderArchive(button.getAttribute('data-phase')); });
         });
