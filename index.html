@@ -101,8 +101,8 @@
         /* Font Size Controls */
         .font-size-controls {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-end;
+            gap: 8px;
             background: rgba(255, 255, 255, 0.2);
             padding: 5px 15px;
             border-radius: 20px;
@@ -113,16 +113,22 @@
             background: transparent;
             border: none;
             color: white;
-            font-size: 1.2rem;
             cursor: pointer;
-            width: 30px;
-            height: 30px;
+            min-width: 28px;
+            min-height: 28px;
+            padding: 2px 4px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            line-height: 1;
             transition: all 0.3s;
         }
+
+        #font-small { font-size: 12px; }
+        #font-medium { font-size: 16px; }
+        #font-large { font-size: 22px; }
+        #font-xlarge { font-size: 30px; }
 
         .font-size-btn:hover {
             background: rgba(255, 255, 255, 0.2);
@@ -277,6 +283,10 @@
             border-color: var(--secondary-color);
             outline: none;
             box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+        }
+
+        .form-control.field-problem {
+            border-color: #b00020;
         }
         
         .auth-buttons {
@@ -1840,7 +1850,7 @@
                         <i class="fas fa-sign-in-alt"></i> <span class="lang-en">Sign In</span><span class="lang-zh">登入</span>
                     </button>
                 </div>
-                <p id="authMessage" style="text-align:center; margin-top:16px; font-weight:700;"></p>
+                <p id="authMessage" style="text-align:center; margin-top:16px; font-weight:700; white-space:pre-line;"></p>
                 <p id="forgotWrap" style="display:none; text-align:center; margin-top:16px;">
                     <button type="button" id="forgotBtn" style="background:none; border:none; color:var(--primary-color); font-weight:700; cursor:pointer;">
                         <span class="lang-en">Forgot username or password?</span><span class="lang-zh">忘記用戶名或密碼？</span>
@@ -3145,24 +3155,65 @@ const puzzleImages = {
         authMode = 'signup';
 
         const name = document.getElementById('name')?.value.trim();
-        const age = document.getElementById('age')?.value;
+        const age = String(document.getElementById('age')?.value || '').trim();
         const email = document.getElementById('email')?.value.trim();
         const language = document.getElementById('language')?.value;
-        const username = document.getElementById('username')?.value.trim();
+        const username = document.getElementById('username')?.value.trim().replace(/\s+/g, ' ');
         const password = document.getElementById('password')?.value || '';
         const confirmPassword = document.getElementById('confirmPassword')?.value || '';
+        const english = currentLanguage === 'en';
+        const problems = [];
+        const problemFields = [];
 
-        if (!name || !age || !email || !language || !username || !password) {
-            showAuthMessage(currentLanguage === 'en' ? 'Please fill in all fields.' : '請填寫所有欄位。', true);
-            return;
+        if (!name) {
+            problems.push(english ? 'Name: please enter your name.' : '名字：請輸入你的名字。');
+            problemFields.push('name');
         }
-        const ageNumber = Number(age);
-        if (!ageNumber || ageNumber < 5 || ageNumber > 13) {
-            showAuthMessage(currentLanguage === 'en' ? 'Please enter an age from 5 to 13.' : '請輸入 5 至 13 歲。', true);
-            return;
+        if (!age) {
+            problems.push(english ? 'Age: please enter your age.' : '年齡：請輸入你的年齡。');
+            problemFields.push('age');
+        } else if (!/^\d+$/.test(age) || Number(age) < 5 || Number(age) > 13) {
+            problems.push(english ? 'Age: please enter a whole number from 5 to 13.' : '年齡：請輸入 5 至 13 的整數。');
+            problemFields.push('age');
         }
-        if (password !== confirmPassword) {
-            showAuthMessage(currentLanguage === 'en' ? 'The two passwords do not match.' : '兩次輸入的密碼不相同。', true);
+        if (!email) {
+            problems.push(english ? 'Email: please enter your email address.' : '電郵：請輸入你的電郵地址。');
+            problemFields.push('email');
+        } else if (email.indexOf('@') < 1 || email.indexOf('@') === email.length - 1 || email.indexOf('.', email.indexOf('@')) < 0) {
+            problems.push(english ? 'Email: please enter an email address with @ and a dot, such as name@school.com.' : '電郵：請輸入帶有 @ 和點的電郵地址，例如 name@school.com。');
+            problemFields.push('email');
+        }
+        if (!language) {
+            problems.push(english ? 'Language: please choose English or 中文.' : '語言：請選擇 English 或中文。');
+            problemFields.push('language');
+        }
+        if (!username) {
+            problems.push(english ? 'Username: please enter a username.' : '用戶名：請輸入用戶名。');
+            problemFields.push('username');
+        } else if (username.length < 3 || username.length > 20) {
+            problems.push(english ? 'Username: use 3 to 20 characters.' : '用戶名：請用 3 至 20 個字。');
+            problemFields.push('username');
+        }
+        if (!password) {
+            problems.push(english ? 'Password: please enter a password.' : '密碼：請輸入密碼。');
+            problemFields.push('password');
+        } else if (password.length < 4) {
+            problems.push(english ? 'Password: use at least 4 characters.' : '密碼：最少要有 4 個字元。');
+            problemFields.push('password');
+        }
+        if (!confirmPassword) {
+            problems.push(english ? 'Confirm password: please enter the password again.' : '再輸入密碼：請再輸入一次密碼。');
+            problemFields.push('confirmPassword');
+        } else if (password !== confirmPassword) {
+            problems.push(english ? 'Confirm password: the two passwords do not match.' : '再輸入密碼：兩次輸入的密碼不相同。');
+            problemFields.push('confirmPassword');
+        }
+        ['name', 'age', 'email', 'language', 'username', 'password', 'confirmPassword'].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (field) field.classList.toggle('field-problem', problemFields.indexOf(id) !== -1);
+        });
+        if (problems.length) {
+            showAuthMessage(problems.join('\n'), true);
             return;
         }
 
