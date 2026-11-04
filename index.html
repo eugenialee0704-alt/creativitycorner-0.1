@@ -1793,8 +1793,14 @@
             <h2 class="lang-en">Welcome to Creativity Corner!</h2>
             <h2 class="lang-zh">歡迎來到創意角落！</h2>
             
-            <p class="lang-en" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">Sign up to start your creative journey with fun activities!</p>
-            <p class="lang-zh" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">註冊開始你的創意之旅，享受有趣的活動！</p>
+            <div class="signup-only">
+                <p class="lang-en" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">Sign up to start your creative journey with fun activities!</p>
+                <p class="lang-zh" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">註冊開始你的創意之旅，享受有趣的活動！</p>
+            </div>
+            <div class="signin-only" style="display:none;">
+                <p class="lang-en" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">Sign in with your username and password.</p>
+                <p class="lang-zh" style="text-align: center; margin-bottom: 30px; font-size: 1.1rem;">請用用戶名和密碼登入。</p>
+            </div>
             
             <form class="auth-form" id="authForm">
                 <div class="form-group signup-only">
@@ -1846,10 +1852,20 @@
                     <button type="button" class="btn btn-primary" id="signUpBtn">
                         <i class="fas fa-user-plus"></i> <span class="lang-en">Sign Up</span><span class="lang-zh">註冊</span>
                     </button>
-                    <button type="button" class="btn btn-secondary" id="signInBtn">
+                    <button type="button" class="btn btn-primary" id="signInBtn" style="display:none;">
                         <i class="fas fa-sign-in-alt"></i> <span class="lang-en">Sign In</span><span class="lang-zh">登入</span>
                     </button>
                 </div>
+                <p id="haveAccountWrap" style="text-align:center; margin-top:18px;">
+                    <button type="button" id="haveAccountBtn" style="background:none; border:none; color:var(--primary-color); font-weight:700; cursor:pointer; font-size:1.05rem;">
+                        <span class="lang-en">Already have an account?</span><span class="lang-zh">已有帳戶？</span>
+                    </button>
+                </p>
+                <p id="needAccountWrap" style="display:none; text-align:center; margin-top:18px;">
+                    <button type="button" id="needAccountBtn" style="background:none; border:none; color:var(--primary-color); font-weight:700; cursor:pointer; font-size:1.05rem;">
+                        <span class="lang-en">Need an account? Sign up</span><span class="lang-zh">還沒有帳戶？註冊</span>
+                    </button>
+                </p>
                 <p id="authMessage" style="text-align:center; margin-top:16px; font-weight:700; white-space:pre-line;"></p>
                 <p id="forgotWrap" style="display:none; text-align:center; margin-top:16px;">
                     <button type="button" id="forgotBtn" style="background:none; border:none; color:var(--primary-color); font-weight:700; cursor:pointer;">
@@ -2885,6 +2901,17 @@ const puzzleImages = {
         document.querySelectorAll('.signup-only').forEach(function (el) {
             el.style.display = mode === 'signup' ? 'block' : 'none';
         });
+        document.querySelectorAll('.signin-only').forEach(function (el) {
+            el.style.display = mode === 'signin' ? 'block' : 'none';
+        });
+        const signUpButton = document.getElementById('signUpBtn');
+        const signInButton = document.getElementById('signInBtn');
+        const haveAccountWrap = document.getElementById('haveAccountWrap');
+        const needAccountWrap = document.getElementById('needAccountWrap');
+        if (signUpButton) signUpButton.style.display = mode === 'signup' ? 'flex' : 'none';
+        if (signInButton) signInButton.style.display = mode === 'signin' ? 'flex' : 'none';
+        if (haveAccountWrap) haveAccountWrap.style.display = mode === 'signup' ? 'block' : 'none';
+        if (needAccountWrap) needAccountWrap.style.display = mode === 'signin' ? 'block' : 'none';
         const forgotWrap = document.getElementById('forgotWrap');
         if (forgotWrap) forgotWrap.style.display = mode === 'signin' ? 'block' : 'none';
         if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
@@ -3009,13 +3036,17 @@ const puzzleImages = {
             else handleAuthSubmit(event);
         });
         if (signInBtn) signInBtn.addEventListener('click', function () {
-            if (authMode !== 'signin') {
-                showAuthMode('signin');
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value;
-                if (!username || !password) return;
-            }
             handleSignIn();
+        });
+        const haveAccountBtn = document.getElementById('haveAccountBtn');
+        if (haveAccountBtn) haveAccountBtn.addEventListener('click', function () {
+            showAuthMessage('');
+            showAuthMode('signin');
+        });
+        const needAccountBtn = document.getElementById('needAccountBtn');
+        if (needAccountBtn) needAccountBtn.addEventListener('click', function () {
+            showAuthMessage('');
+            showAuthMode('signup');
         });
         const signUpButton = document.getElementById('signUpBtn');
         if (signUpButton) signUpButton.addEventListener('click', function () {
