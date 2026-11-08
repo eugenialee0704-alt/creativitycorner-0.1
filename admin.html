@@ -294,6 +294,7 @@
             if (!details.consent) {
                 html += '<p class="muted">No consent saved.</p>';
             } else {
+                html += field('Parent or guardian', consent.parentName);
                 html += field('Name on consent', consent.participantName);
                 html += field('Signing date', consent.participantDate || consent.signedDate);
                 html += signature.indexOf('data:image') === 0

@@ -50,17 +50,15 @@
         if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
     }
 
-    function userEmail() {
-        if (!currentUser) return '';
-        return String(currentUser.email || currentUser.name || '').toLowerCase();
-    }
+function userEmail() {
+    if (!currentUser) return '';
+    return String(currentUser.email || '').trim().toLowerCase();
+}
 
-    function accountScope() {
-        if (!currentUser) return '';
-        const id = String(currentUser.userId || '').trim();
-        if (id) return id;
-        return userEmail();
-    }
+function accountScope() {
+    if (!currentUser) return '';
+    return String(currentUser.userId || '').trim();
+}
 
     function recordKey() {
         return 'autRecord_' + accountScope();
@@ -78,22 +76,18 @@
         return { pre: null, post: null };
     }
 
-    function loadRecord() {
-        if (!currentUser) return emptyRecord();
-        const id = String(currentUser.userId || '').trim();
-        const own = readStoredRecord(recordKey());
-        if (own.pre || own.post) {
-            if (!id || !own.userId || own.userId === id) return own;
-        }
-        if (!id) return own;
-        const legacy = readStoredRecord('autRecord_' + userEmail());
-        if (legacy.userId && legacy.userId !== id) return emptyRecord();
-        return legacy;
-    }
+function loadRecord() {
+    const id = accountScope();
+    if (!id) return emptyRecord();
+    const own = readStoredRecord(recordKey());
+    if (own.userId !== id) return emptyRecord();
+    return own;
+}
 
     function saveRecord(record) {
-        const id = String(currentUser && currentUser.userId || '').trim();
-        if (id) record.userId = id;
+        const id = accountScope();
+        if (!id) return;
+        record.userId = id;
         localStorage.setItem(recordKey(), JSON.stringify(record));
         const index = readIndex().filter(function (entry) {
             return entry.email !== userEmail();
@@ -308,19 +302,20 @@
         stopTimer();
     };
 
-    window.prepareAutForAccount = function (user) {
-        window.noteAutAccount();
-        const id = String((user && user.userId) || '').trim();
-        const email = String((user && user.email) || '').trim().toLowerCase();
-        [id, email].forEach(function (part) {
-            if (!part) return;
-            localStorage.removeItem('autRecord_' + part);
-            localStorage.removeItem('autDraft_' + part + '_pre');
-            localStorage.removeItem('autDraft_' + part + '_post');
-            sessionStorage.removeItem('autTimer_' + part + '_pre');
-            sessionStorage.removeItem('autTimer_' + part + '_post');
-        });
-    };
+window.prepareAutForAccount = function (user) {
+    window.noteAutAccount();
+    const id = String((user && user.userId) || '').trim();
+    const email = String((user && user.email) || '').trim().toLowerCase();
+    const name = String((user && user.name) || '').trim().toLowerCase();
+    [id, email, name].forEach(function (part) {
+        if (!part) return;
+        localStorage.removeItem('autRecord_' + part);
+        localStorage.removeItem('autDraft_' + part + '_pre');
+        localStorage.removeItem('autDraft_' + part + '_post');
+        sessionStorage.removeItem('autTimer_' + part + '_pre');
+        sessionStorage.removeItem('autTimer_' + part + '_post');
+    });
+};
 
     function startTimer(phase) {
         stopTimer();
@@ -944,7 +939,8 @@
         };
     }
 
-    installHooks();
+        window.refreshAutCard = renderDashboardCard;
+        installHooks();
     watchAdmin();
     document.addEventListener('DOMContentLoaded', function () {
         const mount = document.getElementById('autDashboardMount');

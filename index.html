@@ -2001,8 +2001,12 @@
         <!-- SIGNATURE SECTION - Only Child Signature -->
         <div class="signature-section" style="grid-template-columns: 1fr;">
             <div class="signature-box">
-                <label class="lang-en">Child Name:</label>
-                <label class="lang-zh">孩子姓名：</label>
+                <label class="lang-en">Parent or guardian name:</label>
+                <label class="lang-zh">家長或監護人姓名：</label>
+                <input type="text" id="parentName" class="form-control" placeholder="Enter parent or guardian name" required>
+
+                <label class="lang-en" style="margin-top: 15px;">Child Name:</label>
+                <label class="lang-zh" style="margin-top: 15px;">孩子姓名：</label>
                 <input type="text" id="studentName" class="form-control" placeholder="Enter child name" required>
                 
                 <label class="lang-en" style="margin-top: 15px;">Child Signature (draw with your mouse or finger):</label>
@@ -2807,23 +2811,35 @@ const puzzleImages = {
         return match ? Number(match[1]) : 0;
     }
 
-    function storeCreativityCheck(check, freshAccount) {
+    function storeCreativityCheck(check) {
         const id = String(currentUser.userId || '').trim();
         const email = String(currentUser.email || '').trim().toLowerCase();
+        const name = String(currentUser.name || '').trim().toLowerCase();
         const pre = check && check.pre && (check.pre.result || check.pre.answers) ? check.pre : null;
         const post = check && check.post && (check.post.result || check.post.answers) ? check.post : null;
-        if (freshAccount && typeof window.prepareAutForAccount === 'function') {
-            window.prepareAutForAccount(currentUser);
+        if (typeof window.noteAutAccount === 'function') window.noteAutAccount();
+        [email, name].forEach(function (part) {
+            if (!part || part === id) return;
+            localStorage.removeItem('autRecord_' + part);
+            localStorage.removeItem('autDraft_' + part + '_pre');
+            localStorage.removeItem('autDraft_' + part + '_post');
+            sessionStorage.removeItem('autTimer_' + part + '_pre');
+            sessionStorage.removeItem('autTimer_' + part + '_post');
+        });
+        localStorage.removeItem('autRecord_');
+        if (!id) return;
+        if (!pre && !post) {
+            localStorage.removeItem('autRecord_' + id);
+            return;
         }
-        if (!pre && !post) return;
-        const stored = JSON.stringify({ userId: id, pre: pre, post: post });
-        if (id) localStorage.setItem('autRecord_' + id, stored);
-        if (email) localStorage.setItem('autRecord_' + email, stored);
+        localStorage.setItem('autRecord_' + id, JSON.stringify({ userId: id, pre: pre, post: post }));
     }
 
     function applyServerAccount(data, freshAccount) {
         const user = data.user || {};
+        const previousId = currentUser && String(currentUser.userId || '');
         const previousToken = currentUser && currentUser.sessionToken;
+        const sameAccount = !freshAccount && previousId && previousId === String(user.id || '');
         const completed = Array.isArray(user.completedActivities) ? user.completedActivities.map(Number) : [];
         currentUser = {
             name: user.name,
@@ -2835,12 +2851,16 @@ const puzzleImages = {
             joinedDate: user.joinedDate,
             completedActivities: completed,
             userId: user.id,
-            sessionToken: data.token || (freshAccount ? '' : previousToken) || '',
+            sessionToken: data.token || (sameAccount ? previousToken : '') || '',
             mustChangePassword: !!data.mustChangePassword
         };
         localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
         if (data.consentSigned) {
             localStorage.setItem('consentSigned_' + user.name, 'true');
+            if (user.id) localStorage.setItem('consentSigned_' + user.id, 'true');
+        }
+        for (let activityNumber = 1; activityNumber <= 5; activityNumber++) {
+            localStorage.removeItem('activity_' + activityNumber + '_responses_' + user.name);
         }
         (data.activities || []).forEach(function (activity) {
             localStorage.setItem(
@@ -2850,13 +2870,17 @@ const puzzleImages = {
         });
         if (data.drawingDataUrl) {
             localStorage.setItem('animalDrawing_' + user.name, data.drawingDataUrl);
+        } else {
+            localStorage.removeItem('animalDrawing_' + user.name);
         }
         if (data.puzzleProgress != null) {
             localStorage.setItem('puzzleProgress_' + user.name, String(data.puzzleProgress));
+        } else {
+            localStorage.removeItem('puzzleProgress_' + user.name);
         }
-        if (typeof window.noteAutAccount === 'function') window.noteAutAccount();
-        storeCreativityCheck(data.creativityCheck || {}, freshAccount === true);
+        storeCreativityCheck(data.creativityCheck || {});
         window.myAccountCache = data;
+        if (typeof window.refreshAutCard === 'function') window.refreshAutCard();
     }
 
     let authMode = 'signup';
@@ -3417,6 +3441,9 @@ function showConsentForm() {
     }
     
     // Set student name from current user
+    const parentNameElement = document.getElementById('parentName');
+    if (parentNameElement) parentNameElement.value = '';
+
     if (currentUser) {
         const nameElement = document.getElementById('studentName');
         if (nameElement) {
@@ -3633,9 +3660,17 @@ function getCanvasCoordinates(canvas, event) {
 
    // Submit consent form
 async function submitConsentForm() {
-    const studentName = document.getElementById('studentName')?.value;
+    const parentName = document.getElementById('parentName')?.value.trim() || '';
+    const studentName = document.getElementById('studentName')?.value.trim() || '';
     const studentDate = document.getElementById('studentDate')?.value;
     
+    if (!parentName) {
+        alert(currentLanguage === 'en' ?
+            "Please enter the parent or guardian's name." :
+            "請填寫家長或監護人的姓名。");
+        return;
+    }
+
     if (!studentName || !studentDate) {
         alert(currentLanguage === 'en' ? 
             "Please type your name and choose the date, then sign in the box." : 
@@ -3655,6 +3690,7 @@ async function submitConsentForm() {
     }
     
     const consentData = {
+        parentName: parentName,
         participantName: studentName,
         participantDate: studentDate,
         participantSignatureDataUrl: signatureCanvas ? signatureCanvas.toDataURL("image/png") : "",
@@ -3698,6 +3734,9 @@ function checkIfCanvasIsEmpty(canvas) {
             currentUser = null;
             localStorage.removeItem('creativityCornerUser');
             window.myAccountCache = null;
+            if (typeof window.noteAutAccount === 'function') window.noteAutAccount();
+            const autMount = document.getElementById('autDashboardMount');
+            if (autMount) autMount.innerHTML = '';
             
             activities.forEach((activity, index) => {
                 if (index > 0) {
@@ -5749,6 +5788,11 @@ async function displayUserDetails(user) {
             : 'N/A';
         consentInfoDisplay.innerHTML = `
             <div class="admin-info-item">
+                <div class="label lang-en">Parent or guardian</div>
+                <div class="label lang-zh">家長或監護人</div>
+                <div class="value">${escapeAdminText(consent.parentName || 'N/A')}</div>
+            </div>
+            <div class="admin-info-item">
                 <div class="label lang-en">Participant Name</div>
                 <div class="label lang-zh">參與者姓名</div>
                 <div class="value">${escapeAdminText(consent.participantName || 'N/A')}</div>
@@ -6044,9 +6088,8 @@ function accountFromLocal() {
     let check = {};
     try {
         const id = String((currentUser && currentUser.userId) || '').trim();
-        const email = String((currentUser && currentUser.email) || '').trim().toLowerCase();
-        const raw = (id && localStorage.getItem('autRecord_' + id)) || (email && localStorage.getItem('autRecord_' + email)) || '{}';
-        check = JSON.parse(raw);
+        const parsed = id ? JSON.parse(localStorage.getItem('autRecord_' + id) || '{}') : {};
+        check = parsed && parsed.userId === id ? parsed : {};
     } catch (error) {
         check = {};
     }
@@ -6179,7 +6222,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js"></script>
+<script src="aut.js?v=20261108c"></script>
 
 </body>
 </html>
