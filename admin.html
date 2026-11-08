@@ -278,6 +278,7 @@
             submissions.forEach(function (item) { byId[item.activityId] = item; });
             const animal = (byId[1] || {}).responses || null;
             const drawing = details.drawingDataUrl || ((byId[1] || {}).metadata || {}).animalDrawingDataUrl || '';
+            const parentSignature = consent.parentSignatureDataUrl || '';
             const signature = consent.participantSignatureDataUrl || '';
             let html = '<h2>' + escapeText(user.name || 'Participant') + '</h2>';
             html += '<button class="danger delete-user" id="deleteUserBtn" type="button">' +
@@ -297,9 +298,14 @@
                 html += field('Parent or guardian', consent.parentName);
                 html += field('Name on consent', consent.participantName);
                 html += field('Signing date', consent.participantDate || consent.signedDate);
+                html += '<p><strong>Parent or guardian signature</strong></p>';
+                html += parentSignature.indexOf('data:image') === 0
+                    ? '<img class="signature" alt="Parent signature" src="' + parentSignature + '">'
+                    : '<p class="muted">No parent signature saved.</p>';
+                html += '<p><strong>Child signature</strong></p>';
                 html += signature.indexOf('data:image') === 0
-                    ? '<img class="signature" alt="Signature" src="' + signature + '">'
-                    : '<p class="muted">No signature saved.</p>';
+                    ? '<img class="signature" alt="Child signature" src="' + signature + '">'
+                    : '<p class="muted">No child signature saved.</p>';
             }
             html += '<h3>Drawing</h3>';
             html += drawing.indexOf('data:image') === 0

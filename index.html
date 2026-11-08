@@ -400,7 +400,8 @@
         }
 
         /* Ensure canvas has a solid background and is not transparent */
-        #studentSignature {
+        #studentSignature,
+        #parentSignature {
             background-color: white !important;
         }
         .signature-box {
@@ -2005,6 +2006,15 @@
                 <label class="lang-zh">家長或監護人姓名：</label>
                 <input type="text" id="parentName" class="form-control" placeholder="Enter parent or guardian name" required>
 
+                <label class="lang-en" style="margin-top: 15px;">Parent or guardian signature (draw with your mouse or finger):</label>
+                <label class="lang-zh" style="margin-top: 15px;">家長或監護人簽名（用鼠標或手指繪畫）：</label>
+                <canvas id="parentSignature" class="signature-canvas"></canvas>
+                <div class="signature-tools">
+                    <button type="button" class="signature-btn" id="clearParentSignature">
+                        <i class="fas fa-eraser"></i> <span class="lang-en">Clear</span><span class="lang-zh">清除</span>
+                    </button>
+                </div>
+
                 <label class="lang-en" style="margin-top: 15px;">Child Name:</label>
                 <label class="lang-zh" style="margin-top: 15px;">孩子姓名：</label>
                 <input type="text" id="studentName" class="form-control" placeholder="Enter child name" required>
@@ -2689,6 +2699,7 @@
 
     // Consent signing canvas (child)
     let studentSignatureCanvas, studentSignatureCtx;
+    let parentSignatureCanvas, parentSignatureCtx;
 
     // Drawing canvas variables
     let canvas, ctx;
@@ -3575,6 +3586,77 @@ function initSignatureCanvases() {
     }
     
     console.log("Signature canvas initialized successfully");
+    parentSignatureCtx = bindSignaturePad(document.getElementById('parentSignature'));
+    parentSignatureCanvas = document.getElementById('parentSignature');
+}
+
+function bindSignaturePad(canvas) {
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width || 500;
+    canvas.height = 150;
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#333333';
+
+    if (canvas._signatureHandlers) {
+        const old = canvas._signatureHandlers;
+        canvas.removeEventListener('mousedown', old.start);
+        canvas.removeEventListener('mousemove', old.draw);
+        canvas.removeEventListener('mouseup', old.stop);
+        canvas.removeEventListener('mouseleave', old.stop);
+        canvas.removeEventListener('touchstart', old.touchStart);
+        canvas.removeEventListener('touchmove', old.touchMove);
+        canvas.removeEventListener('touchend', old.touchEnd);
+    }
+
+    let drawing = false;
+    function start(e) {
+        drawing = true;
+        const pos = getCanvasCoordinates(canvas, e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }
+    function draw(e) {
+        if (!drawing) return;
+        e.preventDefault();
+        const pos = getCanvasCoordinates(canvas, e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }
+    function stop() {
+        drawing = false;
+        ctx.beginPath();
+    }
+    function touchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY }));
+    }
+    function touchMove(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY }));
+    }
+    function touchEnd(e) {
+        e.preventDefault();
+        stop();
+    }
+    canvas._signatureHandlers = { start: start, draw: draw, stop: stop, touchStart: touchStart, touchMove: touchMove, touchEnd: touchEnd };
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stop);
+    canvas.addEventListener('mouseleave', stop);
+    canvas.addEventListener('touchstart', touchStart);
+    canvas.addEventListener('touchmove', touchMove);
+    canvas.addEventListener('touchend', touchEnd);
+    return ctx;
 }
 
     // Setup drawing for a canvas
@@ -3656,6 +3738,11 @@ function getCanvasCoordinates(canvas, event) {
             studentSignatureCtx.fillStyle = 'white';
             studentSignatureCtx.fillRect(0, 0, studentSignatureCanvas.width, studentSignatureCanvas.height);
         }
+        if (type === 'parent' && parentSignatureCtx) {
+            parentSignatureCtx.clearRect(0, 0, parentSignatureCanvas.width, parentSignatureCanvas.height);
+            parentSignatureCtx.fillStyle = 'white';
+            parentSignatureCtx.fillRect(0, 0, parentSignatureCanvas.width, parentSignatureCanvas.height);
+        }
     }
 
    // Submit consent form
@@ -3668,6 +3755,14 @@ async function submitConsentForm() {
         alert(currentLanguage === 'en' ?
             "Please enter the parent or guardian's name." :
             "請填寫家長或監護人的姓名。");
+        return;
+    }
+
+    const parentCanvas = document.getElementById('parentSignature');
+    if (!signatureHasInk(parentCanvas)) {
+        alert(currentLanguage === 'en' ?
+            "Please sign in the parent or guardian signature box." :
+            "請在家長或監護人的簽名框中簽名。");
         return;
     }
 
@@ -3691,6 +3786,7 @@ async function submitConsentForm() {
     
     const consentData = {
         parentName: parentName,
+        parentSignatureDataUrl: parentCanvas ? parentCanvas.toDataURL("image/png") : "",
         participantName: studentName,
         participantDate: studentDate,
         participantSignatureDataUrl: signatureCanvas ? signatureCanvas.toDataURL("image/png") : "",
@@ -3712,6 +3808,15 @@ async function submitConsentForm() {
 }
 
 // Helper function to check if canvas is empty
+function signatureHasInk(canvas) {
+    if (!canvas || !canvas.width || !canvas.height) return false;
+    const pixelData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 0; i < pixelData.length; i += 4) {
+        if (pixelData[i] < 245 || pixelData[i + 1] < 245 || pixelData[i + 2] < 245) return true;
+    }
+    return false;
+}
+
 function checkIfCanvasIsEmpty(canvas) {
     if (!canvas) return true;
     const ctx = canvas.getContext('2d');
@@ -5783,14 +5888,22 @@ async function displayUserDetails(user) {
     if (!consent) {
         consentInfoDisplay.innerHTML = '<div class="admin-info-item" colspan="2"><span class="lang-en">No consent data found</span><span class="lang-zh">沒有找到同意書數據</span></div>';
     } else {
+        const parentSignature = consent.parentSignatureDataUrl
+            ? `<img src="${consent.parentSignatureDataUrl}" alt="Parent signature" style="max-width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px;">`
+            : 'N/A';
         const signature = consent.participantSignatureDataUrl
-            ? `<img src="${consent.participantSignatureDataUrl}" alt="Signature" style="max-width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px;">`
+            ? `<img src="${consent.participantSignatureDataUrl}" alt="Child signature" style="max-width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px;">`
             : 'N/A';
         consentInfoDisplay.innerHTML = `
             <div class="admin-info-item">
                 <div class="label lang-en">Parent or guardian</div>
                 <div class="label lang-zh">家長或監護人</div>
                 <div class="value">${escapeAdminText(consent.parentName || 'N/A')}</div>
+            </div>
+            <div class="admin-info-item">
+                <div class="label lang-en">Parent or guardian signature</div>
+                <div class="label lang-zh">家長或監護人簽名</div>
+                <div class="value">${parentSignature}</div>
             </div>
             <div class="admin-info-item">
                 <div class="label lang-en">Participant Name</div>
@@ -5803,8 +5916,8 @@ async function displayUserDetails(user) {
                 <div class="value">${escapeAdminText(consent.participantDate || consent.signedDate || 'N/A')}</div>
             </div>
             <div class="admin-info-item">
-                <div class="label lang-en">Signature</div>
-                <div class="label lang-zh">簽名</div>
+                <div class="label lang-en">Child signature</div>
+                <div class="label lang-zh">孩子簽名</div>
                 <div class="value">${signature}</div>
             </div>
         `;
