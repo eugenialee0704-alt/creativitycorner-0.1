@@ -2,15 +2,16 @@
 .aut-panel,
 .aut-admin-panel {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 16px 36px rgba(62, 42, 120, 0.1);
     padding: 28px;
     margin: 10px 0 30px;
+    border: 3px solid #ffffff;
 }
 
 .aut-dashboard-card {
-    border: 3px solid var(--secondary-color);
-    background: linear-gradient(180deg, #ffffff 0%, #f3fffd 100%);
+    border: 4px solid #4ecdc4;
+    background: linear-gradient(180deg, #ffffff 0%, #f4fffd 100%);
 }
 
 .aut-kicker {
@@ -70,7 +71,7 @@
 }
 
 .aut-timer-clock {
-    font-family: 'Comic Neue', cursive;
+    font-family: 'Fredoka', 'Comic Neue', cursive;
     font-size: 2.2rem;
     color: #8a6500;
     line-height: 1;
@@ -119,7 +120,7 @@
 
 .aut-score-tile strong {
     display: block;
-    font-family: 'Comic Neue', cursive;
+    font-family: 'Fredoka', 'Comic Neue', cursive;
     font-size: 2rem;
     color: var(--dark-color);
 }
