@@ -55,8 +55,23 @@
         return String(currentUser.email || currentUser.name || '').toLowerCase();
     }
 
+    function accountScope() {
+        if (!currentUser) return '';
+        const id = String(currentUser.userId || '').trim();
+        if (id) return id;
+        return userEmail();
+    }
+
     function recordKey() {
-        return 'autRecord_' + userEmail();
+        return 'autRecord_' + accountScope();
+    }
+
+    function readStoredRecord(key) {
+        try {
+            return Object.assign(emptyRecord(), JSON.parse(localStorage.getItem(key) || '{}'));
+        } catch (error) {
+            return emptyRecord();
+        }
     }
 
     function emptyRecord() {
@@ -65,14 +80,20 @@
 
     function loadRecord() {
         if (!currentUser) return emptyRecord();
-        try {
-            return Object.assign(emptyRecord(), JSON.parse(localStorage.getItem(recordKey()) || '{}'));
-        } catch (error) {
-            return emptyRecord();
+        const id = String(currentUser.userId || '').trim();
+        const own = readStoredRecord(recordKey());
+        if (own.pre || own.post) {
+            if (!id || !own.userId || own.userId === id) return own;
         }
+        if (!id) return own;
+        const legacy = readStoredRecord('autRecord_' + userEmail());
+        if (legacy.userId && legacy.userId !== id) return emptyRecord();
+        return legacy;
     }
 
     function saveRecord(record) {
+        const id = String(currentUser && currentUser.userId || '').trim();
+        if (id) record.userId = id;
         localStorage.setItem(recordKey(), JSON.stringify(record));
         const index = readIndex().filter(function (entry) {
             return entry.email !== userEmail();
@@ -98,7 +119,7 @@
     }
 
     function draftKey(phase) {
-        return 'autDraft_' + userEmail() + '_' + phase;
+        return 'autDraft_' + accountScope() + '_' + phase;
     }
 
     function loadDraft(phase) {
@@ -278,8 +299,28 @@
     }
 
     function timerKey(phase) {
-        return 'autTimer_' + userEmail() + '_' + phase;
+        return 'autTimer_' + accountScope() + '_' + phase;
     }
+
+    window.noteAutAccount = function () {
+        pendingActivityInvite = false;
+        submitLock = false;
+        stopTimer();
+    };
+
+    window.prepareAutForAccount = function (user) {
+        window.noteAutAccount();
+        const id = String((user && user.userId) || '').trim();
+        const email = String((user && user.email) || '').trim().toLowerCase();
+        [id, email].forEach(function (part) {
+            if (!part) return;
+            localStorage.removeItem('autRecord_' + part);
+            localStorage.removeItem('autDraft_' + part + '_pre');
+            localStorage.removeItem('autDraft_' + part + '_post');
+            sessionStorage.removeItem('autTimer_' + part + '_pre');
+            sessionStorage.removeItem('autTimer_' + part + '_post');
+        });
+    };
 
     function startTimer(phase) {
         stopTimer();

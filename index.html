@@ -2771,24 +2771,31 @@ const puzzleImages = {
     }
 
     async function trySyncUserOnLoad() {
+        const epoch = accountEpoch;
+        const sessionToken = currentUser && currentUser.sessionToken;
+        const name = currentUser && currentUser.name;
+        const email = currentUser && currentUser.email;
         try {
-            if (currentUser && currentUser.sessionToken) {
-                const data = await postJson('/api/public/my-account', { token: currentUser.sessionToken });
-                applyServerAccount(data);
+            if (sessionToken) {
+                const data = await postJson('/api/public/my-account', { token: sessionToken });
+                if (epoch !== accountEpoch) return;
+                applyServerAccount(data, false);
                 if (data.mustChangePassword) showNewPassword();
                 return;
             }
-            if (currentUser && currentUser.name && currentUser.email) {
+            if (name && email) {
                 const data = await postJson('/api/public/my-account', {
-                    name: currentUser.name,
-                    email: currentUser.email
+                    name: name,
+                    email: email
                 });
-                applyServerAccount(data);
+                if (epoch !== accountEpoch) return;
+                applyServerAccount(data, false);
                 if (dashboardSection && dashboardSection.style.display !== 'none') {
                     showDashboard();
                 }
                 return;
             }
+            if (epoch !== accountEpoch) return;
             await upsertCurrentUserToBackend();
         } catch (e) {
             // Backend not running / not reachable — ignore.
@@ -2800,8 +2807,23 @@ const puzzleImages = {
         return match ? Number(match[1]) : 0;
     }
 
-    function applyServerAccount(data) {
+    function storeCreativityCheck(check, freshAccount) {
+        const id = String(currentUser.userId || '').trim();
+        const email = String(currentUser.email || '').trim().toLowerCase();
+        const pre = check && check.pre && (check.pre.result || check.pre.answers) ? check.pre : null;
+        const post = check && check.post && (check.post.result || check.post.answers) ? check.post : null;
+        if (freshAccount && typeof window.prepareAutForAccount === 'function') {
+            window.prepareAutForAccount(currentUser);
+        }
+        if (!pre && !post) return;
+        const stored = JSON.stringify({ userId: id, pre: pre, post: post });
+        if (id) localStorage.setItem('autRecord_' + id, stored);
+        if (email) localStorage.setItem('autRecord_' + email, stored);
+    }
+
+    function applyServerAccount(data, freshAccount) {
         const user = data.user || {};
+        const previousToken = currentUser && currentUser.sessionToken;
         const completed = Array.isArray(user.completedActivities) ? user.completedActivities.map(Number) : [];
         currentUser = {
             name: user.name,
@@ -2813,7 +2835,7 @@ const puzzleImages = {
             joinedDate: user.joinedDate,
             completedActivities: completed,
             userId: user.id,
-            sessionToken: data.token || (currentUser && currentUser.sessionToken) || '',
+            sessionToken: data.token || (freshAccount ? '' : previousToken) || '',
             mustChangePassword: !!data.mustChangePassword
         };
         localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
@@ -2832,17 +2854,18 @@ const puzzleImages = {
         if (data.puzzleProgress != null) {
             localStorage.setItem('puzzleProgress_' + user.name, String(data.puzzleProgress));
         }
-        const check = data.creativityCheck || {};
-        if (check.pre || check.post) {
-            localStorage.setItem('autRecord_' + String(user.email || '').toLowerCase(), JSON.stringify({
-                pre: check.pre || null,
-                post: check.post || null
-            }));
-        }
+        if (typeof window.noteAutAccount === 'function') window.noteAutAccount();
+        storeCreativityCheck(data.creativityCheck || {}, freshAccount === true);
         window.myAccountCache = data;
     }
 
     let authMode = 'signup';
+    let accountEpoch = 0;
+
+    function nextAccountEpoch() {
+        accountEpoch += 1;
+        return accountEpoch;
+    }
 
     function accountProblem(error) {
         const text = String(error && error.message || '');
@@ -2932,8 +2955,8 @@ const puzzleImages = {
         if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
     }
 
-    async function openSignedIn(data, showWork) {
-        applyServerAccount(data);
+    async function openSignedIn(data, showWork, freshAccount) {
+        applyServerAccount(data, freshAccount === true);
         updateLanguage(currentUser.language || 'en');
         updateFontSize(currentUser.fontSize || 'medium');
         if (logoutBtn) logoutBtn.style.display = 'flex';
@@ -3255,6 +3278,7 @@ const puzzleImages = {
             signUpButton.textContent = currentLanguage === 'en' ? 'Saving...' : '正在保存...';
         }
         showAuthMessage(currentLanguage === 'en' ? 'Saving your account...' : '正在保存帳戶...');
+        const epoch = nextAccountEpoch();
         if (typeof refreshCreativityApi === 'function') {
             try { await refreshCreativityApi(); } catch (ignore) {}
         }
@@ -3269,8 +3293,9 @@ const puzzleImages = {
                 fontSize: 'medium',
                 joinedDate: new Date().toISOString()
             });
+            if (epoch !== accountEpoch) return;
             showAuthMessage('');
-            await openSignedIn(data, false);
+            await openSignedIn(data, false, true);
         } catch (error) {
             if (requestStatus(error) === 0) {
                 showAuthMessage(currentLanguage === 'en'
@@ -3297,6 +3322,7 @@ const puzzleImages = {
             return;
         }
         showAuthMessage(currentLanguage === 'en' ? 'Signing in...' : '正在登入...');
+        const epoch = nextAccountEpoch();
         if (typeof refreshCreativityApi === 'function') {
             try { await refreshCreativityApi(); } catch (ignore) {}
         }
@@ -3305,8 +3331,9 @@ const puzzleImages = {
                 username: username,
                 password: password
             });
+            if (epoch !== accountEpoch) return;
             showAuthMessage('');
-            await openSignedIn(data, true);
+            await openSignedIn(data, true, false);
         } catch (error) {
             if (requestStatus(error) === 0) {
                 showAuthMessage(currentLanguage === 'en'
@@ -3667,8 +3694,10 @@ function checkIfCanvasIsEmpty(canvas) {
             "Are you sure you want to log out?" : 
             "確定要登出嗎？")) {
             
+            nextAccountEpoch();
             currentUser = null;
             localStorage.removeItem('creativityCornerUser');
+            window.myAccountCache = null;
             
             activities.forEach((activity, index) => {
                 if (index > 0) {
@@ -6014,7 +6043,10 @@ function accountFromLocal() {
     }
     let check = {};
     try {
-        check = JSON.parse(localStorage.getItem('autRecord_' + String((currentUser && currentUser.email) || '').toLowerCase()) || '{}');
+        const id = String((currentUser && currentUser.userId) || '').trim();
+        const email = String((currentUser && currentUser.email) || '').trim().toLowerCase();
+        const raw = (id && localStorage.getItem('autRecord_' + id)) || (email && localStorage.getItem('autRecord_' + email)) || '{}';
+        check = JSON.parse(raw);
     } catch (error) {
         check = {};
     }
@@ -6084,12 +6116,14 @@ async function showMyWork() {
     if (logoutBtn) logoutBtn.style.display = 'flex';
     mount.innerHTML = '<p class="lang-en">Loading your saved work...</p><p class="lang-zh">正在讀取已保存的作品...</p>';
     if (typeof updateLanguageVisibility === 'function') updateLanguageVisibility();
+    const epoch = accountEpoch;
     let data = window.myAccountCache || accountFromLocal();
     try {
         data = await postJson('/api/public/my-account', currentUser.sessionToken
             ? { token: currentUser.sessionToken }
             : { name: currentUser.name, email: currentUser.email });
-        applyServerAccount(data);
+        if (epoch !== accountEpoch) return;
+        applyServerAccount(data, false);
     } catch (error) {
         if (!data) data = accountFromLocal();
     }
