@@ -249,23 +249,61 @@
             return body;
         }
 
+        function recordLabel(status) {
+            const labels = {
+                valid: 'Counted',
+                main_use: 'Usual use',
+                impossible: 'Not possible',
+                vague: 'Too general',
+                nonsense: 'Not a real idea',
+                duplicate: 'Same idea again',
+                empty: 'Empty'
+            };
+            return labels[status] || status || '—';
+        }
+
+        function analysisLines(result) {
+            if (!result || !Array.isArray(result.objects)) return '';
+            return result.objects.map(function (objectResult) {
+                const lines = (objectResult.items || []).map(function (item, index) {
+                    const category = item.status === 'valid' ? (item.categoryEn || '—') : '—';
+                    return (index + 1) + '. ' + (item.answer || '—') +
+                        ' — Record: ' + recordLabel(item.status) + ' — Category: ' + category;
+                }).join('\n');
+                return '<p class="line"><strong>' + escapeText(objectResult.en || 'Object') +
+                    '</strong> — Fluency ' + escapeText(objectResult.fluency) +
+                    ', Flexibility ' + escapeText(objectResult.flexibility) +
+                    ', Total ' + escapeText(objectResult.total) + '<br>' +
+                    escapeText(lines).replace(/\n/g, '<br>') + '</p>';
+            }).join('');
+        }
+
+        function scoreFields(result) {
+            return field('Creativity Scores', result.total) +
+                field('Fluency', result.fluency) +
+                field('Flexibility', result.flexibility);
+        }
+
         function checkBlock(title, submission) {
             let body = '<h3>' + escapeText(title) + '</h3>';
-            if (!submission || !submission.responses || !submission.responses.answers) {
+            if (!submission || !submission.responses || !submission.responses.result) {
                 return body + '<p class="muted">Nothing saved yet.</p>';
             }
-            const result = submission.responses.result || {};
-            const answers = submission.responses.answers || {};
-            body += field('Total creativity score', result.total);
-            body += field('Fluency', result.fluency);
-            body += field('Flexibility', result.flexibility);
-            const names = { book: 'Book', sticky: 'Sticky Note', brick: 'Brick', newspaper: 'Newspaper' };
-            Object.keys(answers).forEach(function (key) {
-                const lines = (answers[key] || []).map(function (line, index) {
-                    return (index + 1) + '. ' + (line || '—');
-                }).join('\n');
-                body += '<p class="line"><strong>' + escapeText(names[key] || key) + '</strong><br>' +
-                    escapeText(lines).replace(/\n/g, '<br>') + '</p>';
+            const responses = submission.responses;
+            const attempts = Array.isArray(responses.attempts) && responses.attempts.length
+                ? responses.attempts
+                : [{ savedAt: responses.savedAt, result: responses.result }];
+            if (attempts.length === 1) {
+                body += scoreFields(attempts[0].result || {});
+                body += analysisLines(attempts[0].result || {});
+                return body;
+            }
+            attempts.forEach(function (attempt, index) {
+                const when = attempt.savedAt ? String(attempt.savedAt).slice(0, 16).replace('T', ' ') : '';
+                body += '<h3>' + escapeText(title + ' ' + (index + 1)) + '</h3>';
+                if (when) body += field('Saved', when);
+                body += scoreFields(attempt.result || {});
+                body += analysisLines(attempt.result || {});
             });
             return body;
         }

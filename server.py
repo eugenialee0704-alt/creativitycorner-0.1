@@ -248,6 +248,42 @@ def sorted_texts(raw):
     return texts
 
 
+def aut_analysis(result):
+    objects = result.get("objects") if isinstance(result.get("objects"), list) else []
+    analysis = []
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        items = []
+        for item in obj.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            items.append({
+                "answer": item.get("answer") or "",
+                "record": item.get("status") or "",
+                "category": item.get("categoryEn") or "",
+            })
+        analysis.append({
+            "object": obj.get("en") or "",
+            "fluency": obj.get("fluency"),
+            "flexibility": obj.get("flexibility"),
+            "total": obj.get("total"),
+            "items": items,
+        })
+    return analysis
+
+
+def aut_score(result, saved_at):
+    result = result if isinstance(result, dict) else {}
+    return {
+        "fluency": result.get("fluency"),
+        "flexibility": result.get("flexibility"),
+        "totalCreativityScore": result.get("total"),
+        "analysis": aut_analysis(result),
+        "savedAt": saved_at,
+    }
+
+
 def aut_record(submission):
     if not submission:
         return None
@@ -257,13 +293,17 @@ def aut_record(submission):
     named_answers = {}
     for object_id, lines in answers.items():
         named_answers[AUT_OBJECTS.get(object_id, object_id)] = list(lines or [])
-    return {
-        "fluency": result.get("fluency"),
-        "flexibility": result.get("flexibility"),
-        "totalCreativityScore": result.get("total"),
-        "answers": named_answers,
-        "savedAt": payload.get("savedAt") or submission.get("savedAt"),
-    }
+    saved_at = payload.get("savedAt") or submission.get("savedAt")
+    record = aut_score(result, saved_at)
+    record["answers"] = named_answers
+    attempts = payload.get("attempts") if isinstance(payload.get("attempts"), list) else []
+    if attempts:
+        record["attempts"] = [
+            aut_score(attempt.get("result") if isinstance(attempt, dict) else {}, (attempt or {}).get("savedAt"))
+            for attempt in attempts
+            if isinstance(attempt, dict)
+        ]
+    return record
 
 
 def score_change(post_score, pre_score):

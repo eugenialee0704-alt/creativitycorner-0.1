@@ -155,14 +155,37 @@ function loadRecord() {
         return '';
     }
 
-    function scoreTiles(result) {
+    function childScore(result) {
+        if (!result) return '';
         return '<div class="aut-total-score">' +
-            tile(result.total, 'Total creativity score', '創意總分', 'total') +
-            '</div>' +
-            '<div class="aut-score-row aut-score-row-two">' +
-            tile(result.fluency, 'Fluency', '流暢力') +
-            tile(result.flexibility, 'Flexibility', '變通力') +
+            tile(result.total, 'Creativity Scores', '創意分數', 'total') +
             '</div>';
+    }
+
+    function scoreCard(kind, total) {
+        const title = kind === 'before'
+            ? langPair('Before training', '訓練前')
+            : langPair('After training', '訓練後');
+        return '<article class="aut-change-card ' + kind + '">' +
+            '<div class="aut-card-art" aria-hidden="true"><span class="bulb">💡</span><span class="star">⭐</span><span class="spark">✨</span></div>' +
+            '<p class="aut-card-title">' + title + '</p>' +
+            '<strong>' + esc(total) + '</strong>' +
+            '<span class="aut-card-label">' + langPair('Creativity Scores', '創意分數') + '</span>' +
+            '</article>';
+    }
+
+    function scoreCards(pre, post) {
+        return '<div class="aut-change-cards">' + scoreCard('before', pre.total) + scoreCard('after', post.total) + '</div>';
+    }
+
+    function celebrateMarkup() {
+        const bits = ['⭐', '💡', '✨', '🌟', '💛', '⭐', '💡', '✨'];
+        return '<div class="aut-celebrate" aria-hidden="true">' + bits.map(function (bit, index) {
+            const angle = (index / bits.length) * Math.PI * 2;
+            const x = Math.round(Math.cos(angle) * 120);
+            const y = Math.round(Math.sin(angle) * 70 - 30);
+            return '<span style="--x:' + x + 'px;--y:' + y + 'px;--d:' + (index * 0.08) + 's">' + bit + '</span>';
+        }).join('') + '</div>';
     }
 
     function tile(value, en, zh, extraClass) {
@@ -191,28 +214,23 @@ function loadRecord() {
             body = langPair(
                 '<p class="aut-lead">Your first check is saved. The activities are open.</p>',
                 '<p class="aut-lead">第一次測試已儲存。活動已經開啟。</p>'
-            ) + scoreTiles(pre) +
+            ) +
                 '<div class="aut-actions"><button class="btn btn-secondary" id="autViewPre">' + langPair('View saved check', '查看已儲存的測試') + '</button></div>';
         } else if (!post) {
             body = langPair(
                 '<p class="aut-lead">The activities are finished. Do the second check with a brick and a newspaper.</p>',
                 '<p class="aut-lead">活動已完成。請用磚塊和報紙做第二次測試。</p>'
-            ) + scoreTiles(pre) +
+            ) +
                 '<div class="aut-actions"><button class="btn btn-primary" id="autStartPost"><i class="fas fa-clipboard-check"></i> ' +
                 langPair('Start the after-training check', '開始訓練後測試') + '</button></div>';
         } else {
             const change = scoreApi().improvement(pre, post);
-            body = creativityResultCopy(change).html +
-                langPair(
-                '<p class="aut-lead">Both checks are saved. Improvement is the after-training score minus the first score.</p>',
-                '<p class="aut-lead">兩次測試都已儲存。進步分數是訓練後分數減去第一次分數。</p>'
-            ) +
-                '<div class="aut-score-row">' +
-                tile(signed(change.fluency), 'Fluency change', '流暢力變化', changeClass(change.fluency)) +
-                tile(signed(change.flexibility), 'Flexibility change', '變通力變化', changeClass(change.flexibility)) +
-                tile(signed(change.total), 'Total score change', '總分變化', changeClass(change.total)) +
-                '</div>' +
-                '<div class="aut-actions"><button class="btn btn-secondary" id="autViewArchive">' + langPair('Open the response archive', '打開回答紀錄') + '</button></div>';
+            const copy = creativityResultCopy(change);
+            body = langPair('<h4 class="aut-change-heading">Change in creativity scores</h4>', '<h4 class="aut-change-heading">創意分數的變化</h4>') +
+                scoreCards(pre, post) + copy.html +
+                (copy.tryAgain
+                    ? retakeActions('autRetakePost', 'autRetryActivities')
+                    : '<div class="aut-actions"><button class="btn btn-secondary" id="autViewArchive">' + langPair('Open the response archive', '打開回答紀錄') + '</button></div>');
         }
         mount.innerHTML = '<div class="aut-dashboard-card"><span class="aut-kicker">AUT</span>' +
             langPair('<h3>Creativity check</h3>', '<h3>創意測試</h3>') + body + '</div>';
@@ -223,12 +241,42 @@ function loadRecord() {
         if (preButton) preButton.addEventListener('click', function () { openAut('pre'); });
         if (postButton) postButton.addEventListener('click', function () { openAut('post'); });
         if (viewPre) viewPre.addEventListener('click', function () { openAut('pre'); });
-        if (viewArchive) viewArchive.addEventListener('click', function () { openAut(record.post ? 'post' : 'pre'); });
+        if (viewArchive) viewArchive.addEventListener('click', function () { openAut('change'); });
+        bindRetakeActions('autRetakePost', 'autRetryActivities');
         applyLang();
     }
 
-    function openAut(phase) {
-        if (phase === 'post' && !trainingComplete()) {
+    function retakeActions(retakeId, activitiesId) {
+        return '<div class="aut-actions">' +
+            '<button class="btn btn-primary" id="' + retakeId + '" type="button">' + langPair('Retake the creativity check', '重新做創意測試') + '</button>' +
+            '<button class="btn btn-secondary" id="' + activitiesId + '" type="button">' + langPair('Do the activities again', '再做一次活動') + '</button>' +
+            '</div>';
+    }
+
+    function bindRetakeActions(retakeId, activitiesId) {
+        const retake = document.getElementById(retakeId);
+        const activities = document.getElementById(activitiesId);
+        if (retake) {
+            retake.addEventListener('click', function () {
+                const popup = document.getElementById('autScoreResult');
+                if (popup) popup.remove();
+                openAut('post', { retake: true });
+            });
+        }
+        if (activities) {
+            activities.addEventListener('click', function () {
+                const popup = document.getElementById('autScoreResult');
+                if (popup) popup.remove();
+                if (typeof showDashboard === 'function') showDashboard();
+                const cards = document.getElementById('activityCards');
+                if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+    }
+
+    function openAut(phase, options) {
+        options = options || {};
+        if ((phase === 'post' || phase === 'change') && !trainingComplete()) {
             alert(currentLanguage === 'zh' ? '請先完成所有活動。' : 'Please finish all activities first.');
             return;
         }
@@ -236,6 +284,16 @@ function loadRecord() {
         const section = document.getElementById('autSection');
         section.style.display = 'block';
         if (typeof logoutBtn !== 'undefined' && logoutBtn) logoutBtn.style.display = 'flex';
+        if (phase === 'change') {
+            renderArchive('change');
+            window.scrollTo(0, 0);
+            return;
+        }
+        if (options.retake) {
+            renderInstructions(phase);
+            window.scrollTo(0, 0);
+            return;
+        }
         const saved = loadRecord()[phase];
         if (saved && saved.result) renderArchive(phase);
         else renderInstructions(phase);
@@ -573,19 +631,36 @@ window.prepareAutForAccount = function (user) {
         applyLang();
         const result = await scoreAnswers(phase, answers);
         const record = loadRecord();
-        record[phase] = {
+        const savedAt = new Date().toISOString();
+        const entry = {
             phase: phase,
-            savedAt: new Date().toISOString(),
+            savedAt: savedAt,
             name: currentUser.name,
             email: currentUser.email,
             answers: answers,
             result: result
         };
+        if (phase === 'post') {
+            const previous = record.post;
+            const attempts = [];
+            if (previous && Array.isArray(previous.attempts) && previous.attempts.length) {
+                previous.attempts.forEach(function (attempt) { attempts.push(attempt); });
+            } else if (previous && previous.result) {
+                attempts.push({
+                    savedAt: previous.savedAt,
+                    answers: previous.answers,
+                    result: previous.result
+                });
+            }
+            attempts.push({ savedAt: savedAt, answers: answers, result: result });
+            entry.attempts = attempts;
+        }
+        record[phase] = entry;
         saveRecord(record);
         localStorage.removeItem(draftKey(phase));
         sessionStorage.removeItem(timerKey(phase));
         syncAut(record[phase]);
-        renderArchive(phase);
+        renderArchive(phase === 'post' ? 'change' : phase);
         if (phase === 'pre') pendingActivityInvite = true;
         if (phase === 'post') showScoreResult();
     }
@@ -598,8 +673,8 @@ window.prepareAutForAccount = function (user) {
             return {
                 kind: 'up',
                 html: langPair(
-                    '<p class="aut-result-note up">Great job! Your creativity score has gone up.</p>',
-                    '<p class="aut-result-note up">你做得很好！你的創意分數上升了。</p>'
+                    '<p class="aut-result-note up">Congratulations! Your creativity score went up.</p>',
+                    '<p class="aut-result-note up">恭喜你！你的創意分數上升了。</p>'
                 ),
                 buttonEn: 'OK',
                 buttonZh: '好的',
@@ -610,22 +685,22 @@ window.prepareAutForAccount = function (user) {
             return {
                 kind: 'down',
                 html: langPair(
-                    '<p class="aut-result-note down">Your creativity score went down this time. That is okay. Try the activities again and see what new ideas you can find.</p>',
-                    '<p class="aut-result-note down">這次你的創意分數下降了。沒關係。再做一次下面的活動，看看你能想到什麼新主意。</p>'
+                    '<p class="aut-result-note down">Your creativity score went down this time. That can happen. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
+                    '<p class="aut-result-note down">這次你的創意分數下降了。這也沒關係。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
                 ),
-                buttonEn: 'Try again',
-                buttonZh: '再試一次',
+                buttonEn: 'Retake the creativity check',
+                buttonZh: '重新做創意測試',
                 tryAgain: true
             };
         }
         return {
             kind: 'same',
             html: langPair(
-                '<p class="aut-result-note">Your creativity score stayed the same. Try the activities again and see if you can think of even more ideas.</p>',
-                '<p class="aut-result-note">你的創意分數和上次一樣。再做一次下面的活動，看看你能不能想到更多主意。</p>'
+                '<p class="aut-result-note">Your creativity score stayed the same. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
+                '<p class="aut-result-note">你的創意分數和上次一樣。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
             ),
-            buttonEn: 'Try again',
-            buttonZh: '再試一次',
+            buttonEn: 'Retake the creativity check',
+            buttonZh: '重新做創意測試',
             tryAgain: true
         };
     }
@@ -644,19 +719,21 @@ window.prepareAutForAccount = function (user) {
         wrap.className = 'aut-popup-backdrop';
         wrap.innerHTML =
             '<div class="aut-popup ' + copy.kind + '" role="dialog" aria-modal="true">' +
+            (copy.kind === 'up' ? celebrateMarkup() : '') +
             copy.html +
-            '<button class="btn btn-primary" id="autScoreResultOk" type="button">' +
-            langSpan(copy.buttonEn, copy.buttonZh) +
-            '</button></div>';
+            (copy.tryAgain
+                ? retakeActions('autScoreRetake', 'autScoreActivities')
+                : '<button class="btn btn-primary" id="autScoreResultOk" type="button">' +
+                    langSpan(copy.buttonEn, copy.buttonZh) + '</button>') +
+            '</div>';
         document.body.appendChild(wrap);
         applyLang();
+        if (copy.tryAgain) {
+            bindRetakeActions('autScoreRetake', 'autScoreActivities');
+            return;
+        }
         document.getElementById('autScoreResultOk').addEventListener('click', function () {
             wrap.remove();
-            if (typeof showDashboard === 'function') showDashboard();
-            if (copy.tryAgain) {
-                const cards = document.getElementById('activityCards');
-                if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
         });
     }
 
@@ -739,8 +816,8 @@ window.prepareAutForAccount = function (user) {
     function renderArchive(selectedPhase) {
         const record = loadRecord();
         const phases = ['pre', 'post'].filter(function (phase) { return record[phase] && record[phase].result; });
-        const selected = selectedPhase === 'improvement' && record.pre && record.post
-            ? 'improvement'
+        const selected = (selectedPhase === 'change' || selectedPhase === 'improvement') && record.pre && record.post
+            ? 'change'
             : (phases.indexOf(selectedPhase) === -1 ? phases[phases.length - 1] : selectedPhase);
         const list = phases.map(function (phase) {
             const label = phase === 'pre'
@@ -749,14 +826,14 @@ window.prepareAutForAccount = function (user) {
             return '<button type="button" class="aut-archive-item ' + (phase === selected ? 'active' : '') + '" data-phase="' + phase + '">' + label + '</button>';
         }).join('');
         const improvementButton = record.pre && record.post
-            ? '<button type="button" class="aut-archive-item ' + (selected === 'improvement' ? 'active' : '') + '" data-phase="improvement">' +
-                langPair('Improvement', '進步') + '</button>'
+            ? '<button type="button" class="aut-archive-item ' + (selected === 'change' ? 'active' : '') + '" data-phase="change">' +
+                langPair('Change in creativity scores', '創意分數的變化') + '</button>'
             : '';
         document.getElementById('autStage').innerHTML =
             '<div class="aut-panel"><button class="back-button" id="autBack" type="button"><i class="fas fa-arrow-left"></i></button>' +
             langPair('<h3>Response archive</h3>', '<h3>回答紀錄</h3>') +
-            langPair('<p class="aut-note">Every answer is saved here, including boxes that were left empty.</p>',
-                '<p class="aut-note">每個答案都會保存在這裡，包括留空的格子。</p>') +
+            langPair('<p class="aut-note">Your Creativity Scores are saved here.</p>',
+                '<p class="aut-note">你的創意分數保存在這裡。</p>') +
             '<div class="aut-layout"><div class="aut-archive-list">' + list + improvementButton + '</div><div id="autDetail"></div></div></div>';
         document.getElementById('autBack').addEventListener('click', function () {
             if (typeof showDashboard === 'function') showDashboard();
@@ -764,51 +841,37 @@ window.prepareAutForAccount = function (user) {
         document.querySelectorAll('.aut-archive-item').forEach(function (button) {
             button.addEventListener('click', function () { renderArchive(button.getAttribute('data-phase')); });
         });
-        renderArchiveDetail(selected === 'improvement' ? 'improvement' : selected);
+        renderArchiveDetail(selected === 'change' ? 'change' : selected);
         applyLang();
     }
 
     function renderArchiveDetail(selected) {
         const detail = document.getElementById('autDetail');
         const record = loadRecord();
-        if (selected === 'improvement') {
-            const change = scoreApi().improvement(record.pre.result, record.post.result);
-            detail.innerHTML = langPair('<h3>Improvement</h3>', '<h3>進步</h3>') +
-                langPair('<p class="aut-formula">Improvement = after-training score − before-training score. Total creativity score = fluency + flexibility.</p>',
-                    '<p class="aut-formula">進步 = 訓練後分數 − 訓練前分數。創意總分 = 流暢力 + 變通力。</p>') +
-                '<div class="aut-total-score">' +
-                tile(record.pre.result.total + ' → ' + record.post.result.total, 'Total creativity score', '創意總分', 'total') +
-                '</div>' +
-                '<div class="aut-score-row aut-score-row-two">' +
-                tile(record.pre.result.fluency + ' → ' + record.post.result.fluency, 'Fluency', '流暢力') +
-                tile(record.pre.result.flexibility + ' → ' + record.post.result.flexibility, 'Flexibility', '變通力') +
-                '</div>' +
-                '<div class="aut-score-row">' +
-                tile(signed(change.fluency), 'Fluency change', '流暢力變化', changeClass(change.fluency)) +
-                tile(signed(change.flexibility), 'Flexibility change', '變通力變化', changeClass(change.flexibility)) +
-                tile(signed(change.total), 'Total score change', '總分變化', changeClass(change.total)) +
-                '</div>';
+        if (selected === 'change') {
+            const pre = record.pre.result;
+            const post = record.post.result;
+            const change = scoreApi().improvement(pre, post);
+            const copy = creativityResultCopy(change);
+            detail.innerHTML = langPair('<h3>Change in creativity scores</h3>', '<h3>創意分數的變化</h3>') +
+                scoreCards(pre, post) + copy.html +
+                (copy.tryAgain ? retakeActions('autDetailRetake', 'autDetailActivities') : '');
+            bindRetakeActions('autDetailRetake', 'autDetailActivities');
             applyLang();
             return;
         }
         const phaseRecord = record[selected];
         const result = phaseRecord.result;
-        const chat = result.objects.map(function (objectResult) {
-            return '<div class="aut-bubble assistant">' + langPair('Object: ' + esc(objectResult.en), '物件：' + esc(objectResult.zh)) + '</div>' +
-                '<div class="aut-bubble user">' + langPair(esc(answerLines(objectResult, 'en')), esc(answerLines(objectResult, 'zh'))) + '</div>';
-        }).join('') + '<div class="aut-bubble assistant">' + langPair(esc(summaryText(result, 'en')), esc(summaryText(result, 'zh'))) + '</div>';
+        const waiting = selected === 'pre' && !(record.post && record.post.result);
         detail.innerHTML = langPair(
             '<h3>' + (selected === 'pre' ? 'Before training' : 'After training') + '</h3>',
             '<h3>' + (selected === 'pre' ? '訓練前' : '訓練後') + '</h3>'
-        ) + scoreTiles(result) +
-            '<div class="aut-formula">' + langPair(
-                'Total creativity score = fluency + flexibility. Counted uses are the fluency score. Different categories are the flexibility score.',
-                '創意總分 = 流暢力 + 變通力。計入的用途是流暢力。不同類別的數目是變通力。'
-            ) + langPair(
-                result.scoredBy === 'dify' ? '<p class="aut-note">Checked by the creativity chatbot.</p>' : '<p class="aut-note">Checked with the creativity scoring rules.</p>',
-                result.scoredBy === 'dify' ? '<p class="aut-note">由創意聊天機械人評分。</p>' : '<p class="aut-note">依照創意評分規則計算。</p>'
-            ) + '</div><div class="aut-thread">' + chat + '</div>' +
-            result.objects.map(objectTable).join('');
+        ) + (waiting
+            ? langPair(
+                '<p class="aut-note">Your check is saved. Your Creativity Scores will appear after you finish the after-training check.</p>',
+                '<p class="aut-note">你的測試已儲存。完成訓練後測試後，就會看到你的創意分數。</p>'
+            )
+            : childScore(result));
         applyLang();
     }
 
@@ -842,11 +905,22 @@ window.prepareAutForAccount = function (user) {
                     labelZh + '：流暢力 ' + result.fluency + '，變通力 ' + result.flexibility + '，總分 ' + result.total
                 );
             };
+            const attempts = post && Array.isArray(entry.post.attempts) && entry.post.attempts.length
+                ? entry.post.attempts
+                : (post ? [{ result: post }] : []);
+            const attemptHtml = attempts.map(function (attempt, index) {
+                const attemptResult = attempt.result || {};
+                return '<p><strong>After-training check ' + (index + 1) + '</strong></p>' +
+                    scoreLine('Scores', '分數', attemptResult) +
+                    (attemptResult.objects ? attemptResult.objects.map(objectTable).join('') : '');
+            }).join('');
             return '<article class="aut-admin-record"><h4>' + esc(entry.name || entry.email) + '</h4><p class="aut-note">' + esc(entry.email || '') + '</p>' +
-                scoreLine('Before training', '訓練前', pre) + scoreLine('After training', '訓練後', post) +
+                scoreLine('Before training', '訓練前', pre) +
+                (pre && pre.objects ? pre.objects.map(objectTable).join('') : '') +
+                attemptHtml +
                 (change ? langPair(
-                    '<p>Change: fluency ' + signed(change.fluency) + ', flexibility ' + signed(change.flexibility) + ', total ' + signed(change.total) + '</p>',
-                    '<p>變化：流暢力 ' + signed(change.fluency) + '，變通力 ' + signed(change.flexibility) + '，總分 ' + signed(change.total) + '</p>'
+                    '<p>Change in creativity scores: fluency ' + signed(change.fluency) + ', flexibility ' + signed(change.flexibility) + ', total ' + signed(change.total) + '</p>',
+                    '<p>創意分數的變化：流暢力 ' + signed(change.fluency) + '，變通力 ' + signed(change.flexibility) + '，總分 ' + signed(change.total) + '</p>'
                 ) : '') +
                 '</article>';
         }).join('');

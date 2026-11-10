@@ -1707,7 +1707,7 @@
 }
 
     </style>
-    <link rel="stylesheet" href="aut.css">
+    <link rel="stylesheet" href="aut.css?v=20261110a">
 </head>
 <body>
     <!-- Header -->
@@ -6001,24 +6001,55 @@ function responseValue(key, value) {
     return String(value == null ? '' : value);
 }
 
+function autRecordLabel(status) {
+    const labels = {
+        valid: 'Counted',
+        main_use: 'Usual use',
+        impossible: 'Not possible',
+        vague: 'Too general',
+        nonsense: 'Not a real idea',
+        duplicate: 'Same idea again',
+        empty: 'Empty'
+    };
+    return labels[status] || status || '—';
+}
+
+function autAnalysisHtml(result) {
+    if (!result || !Array.isArray(result.objects)) return '';
+    return result.objects.map(function (objectResult) {
+        const rows = (objectResult.items || []).map(function (item, index) {
+            const category = item.status === 'valid' ? (item.categoryEn || '—') : '—';
+            return '<li>' + escapeAdminText((index + 1) + '. ' + (item.answer || '—') +
+                ' — Record: ' + autRecordLabel(item.status) + ' — Category: ' + category) + '</li>';
+        }).join('');
+        return '<p><strong>' + escapeAdminText(objectResult.en || 'Object') + '</strong> — Fluency ' +
+            (objectResult.fluency ?? '—') + ', Flexibility ' + (objectResult.flexibility ?? '—') +
+            ', Total ' + (objectResult.total ?? '—') + '</p><ul>' + rows + '</ul>';
+    }).join('');
+}
+
 function renderAutAdmin(submission, title) {
     if (!submission || !submission.responses) {
         return '<p><strong>' + title + ':</strong> not saved yet</p>';
     }
-    const result = submission.responses.result || {};
-    const answers = submission.responses.answers || {};
-    const names = { book: 'Book', sticky: 'Sticky Note', brick: 'Brick', newspaper: 'Newspaper' };
-    let html = '<p><strong>' + title + '</strong> — Fluency ' + (result.fluency ?? '—') +
-        ', Flexibility ' + (result.flexibility ?? '—') +
-        ', Total ' + (result.total ?? '—') + '</p>';
-    Object.keys(answers).forEach(function (objectId) {
-        html += '<p>' + escapeAdminText(names[objectId] || objectId) + '</p><ol>';
-        (answers[objectId] || []).forEach(function (answer) {
-            html += '<li>' + (answer ? escapeAdminText(answer) : '—') + '</li>';
-        });
-        html += '</ol>';
-    });
-    return html;
+    const responses = submission.responses;
+    const attempts = Array.isArray(responses.attempts) && responses.attempts.length
+        ? responses.attempts
+        : [{ savedAt: responses.savedAt, result: responses.result || {} }];
+    if (attempts.length === 1 && title.indexOf('After') !== 0) {
+        const result = attempts[0].result || {};
+        return '<p><strong>' + title + '</strong> — Fluency ' + (result.fluency ?? '—') +
+            ', Flexibility ' + (result.flexibility ?? '—') +
+            ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result);
+    }
+    return attempts.map(function (attempt, index) {
+        const result = attempt.result || {};
+        const when = attempt.savedAt ? ' (' + escapeAdminText(String(attempt.savedAt).slice(0, 16).replace('T', ' ')) + ')' : '';
+        const heading = attempts.length > 1 ? title + ' ' + (index + 1) : title;
+        return '<p><strong>' + heading + '</strong>' + when + ' — Fluency ' + (result.fluency ?? '—') +
+            ', Flexibility ' + (result.flexibility ?? '—') +
+            ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result);
+    }).join('');
 }
 
 function renderAutChange(pre, post) {
@@ -6029,7 +6060,7 @@ function renderAutChange(pre, post) {
         if (typeof later !== 'number' || typeof earlier !== 'number') return '—';
         return (later - earlier > 0 ? '+' : '') + (later - earlier);
     };
-    return '<p><strong>Improvement</strong> — Fluency ' + change(after.fluency, before.fluency) +
+    return '<p><strong>Change in creativity scores</strong> — Fluency ' + change(after.fluency, before.fluency) +
         ', Flexibility ' + change(after.flexibility, before.flexibility) +
         ', Total ' + change(after.total, before.total) + '</p>';
 }
@@ -6162,27 +6193,15 @@ function sortBoxText(raw) {
     }).filter(Boolean).join(', ');
 }
 
-function renderCheckWork(titleEn, titleZh, phase) {
-    if (!phase || !phase.answers) {
+function renderCheckWork(titleEn, titleZh, phase, revealScore) {
+    if (!phase || !phase.result) {
         return workCard(titleEn, titleZh, '<p class="my-work-empty">Not saved yet. 尚未保存。</p>');
     }
+    if (!revealScore) {
+        return workCard(titleEn, titleZh, '<p class="my-work-line">Your check is saved. Your Creativity Scores will appear after the after-training check. 你的測試已儲存。完成訓練後測試後，就會看到你的創意分數。</p>');
+    }
     const result = phase.result || {};
-    let body = '<p class="my-work-line"><strong>Total creativity score 創意總分:</strong> ' + escapeWorkText(result.total) + '</p>' +
-        '<p class="my-work-line">Fluency 流暢力: ' + escapeWorkText(result.fluency) + '</p>' +
-        '<p class="my-work-line">Flexibility 變通力: ' + escapeWorkText(result.flexibility) + '</p>';
-    const names = {
-        book: 'Book 書',
-        sticky: 'Sticky Note 便利貼',
-        brick: 'Brick 磚',
-        newspaper: 'Newspaper 報紙'
-    };
-    Object.keys(phase.answers).forEach(function (key) {
-        const lines = (phase.answers[key] || []).map(function (line, index) {
-            return escapeWorkText((index + 1) + '. ' + (line || '—'));
-        }).join('<br>');
-        body += '<p class="my-work-line"><strong>' + escapeWorkText(names[key] || key) + '</strong><br>' + lines + '</p>';
-    });
-    return workCard(titleEn, titleZh, body);
+    return workCard(titleEn, titleZh, '<p class="my-work-line"><strong>Creativity Scores 創意分數:</strong> ' + escapeWorkText(result.total) + '</p>');
 }
 
 function accountFromLocal() {
@@ -6235,7 +6254,7 @@ function renderMyWork(data) {
         ['Age 年齡', user.age || ''],
         ['Email 電郵', user.email || '']
     ])) +
-        renderCheckWork('Creativity check before training', '訓練前創意測試', check.pre) +
+        renderCheckWork('Creativity check before training', '訓練前創意測試', check.pre, !!(check.post && check.post.result)) +
         workCard('1. Transformation of Animals', '1. 動物變身', drawing + savedOrEmpty([
             ['Animal name 動物名字', animal.animalName || ''],
             ['Description 描述', animal.animalDescription || '']
@@ -6259,7 +6278,7 @@ function renderMyWork(data) {
             ['Hard to do 有點難做到', sortBoxText(brainstorm.category3)],
             ['Fun ideas but not really helpful 有趣但跟問題不太有關', sortBoxText(brainstorm.category4)]
         ])) +
-        renderCheckWork('Creativity check after training', '訓練後創意測試', check.post);
+        renderCheckWork('Creativity check after training', '訓練後創意測試', check.post, !!(check.post && check.post.result));
 }
 
 async function showMyWork() {
@@ -6335,7 +6354,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js?v=20261108c"></script>
+<script src="aut.js?v=20261110a"></script>
 
 </body>
 </html>

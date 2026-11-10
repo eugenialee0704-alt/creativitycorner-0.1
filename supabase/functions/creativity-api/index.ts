@@ -483,6 +483,34 @@ function sortedTexts(raw: unknown) {
   return parsed.map((item) => typeof item === "object" && item ? String((item as Record<string, unknown>).text ?? "").trim() : String(item).trim()).filter(Boolean);
 }
 
+function autAnalysis(result: Record<string, unknown>) {
+  const objects = Array.isArray(result.objects) ? result.objects : [];
+  return objects.map((obj) => {
+    const objectResult = obj && typeof obj === "object" ? obj as Record<string, unknown> : {};
+    const items = Array.isArray(objectResult.items) ? objectResult.items : [];
+    return {
+      object: objectResult.en || "",
+      fluency: objectResult.fluency,
+      flexibility: objectResult.flexibility,
+      total: objectResult.total,
+      items: items.map((item) => {
+        const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
+        return { answer: row.answer || "", record: row.status || "", category: row.categoryEn || "" };
+      }),
+    };
+  });
+}
+
+function autScore(result: Record<string, unknown>, savedAt: unknown) {
+  return {
+    fluency: result.fluency,
+    flexibility: result.flexibility,
+    totalCreativityScore: result.total,
+    analysis: autAnalysis(result),
+    savedAt,
+  };
+}
+
 function autRecord(submission: ReturnType<typeof submissionFromRow> | undefined) {
   if (!submission) return null;
   const payload = submission.responses && typeof submission.responses === "object" ? submission.responses as Record<string, unknown> : {};
@@ -490,13 +518,17 @@ function autRecord(submission: ReturnType<typeof submissionFromRow> | undefined)
   const answers = payload.answers && typeof payload.answers === "object" ? payload.answers as Record<string, unknown> : {};
   const named: Record<string, unknown> = {};
   for (const [objectId, lines] of Object.entries(answers)) named[AUT_OBJECTS[objectId] ?? objectId] = Array.isArray(lines) ? lines : [];
-  return {
-    fluency: result.fluency,
-    flexibility: result.flexibility,
-    totalCreativityScore: result.total,
-    answers: named,
-    savedAt: payload.savedAt || submission.savedAt,
-  };
+  const record: Record<string, unknown> = autScore(result, payload.savedAt || submission.savedAt);
+  record.answers = named;
+  const attempts = Array.isArray(payload.attempts) ? payload.attempts : [];
+  if (attempts.length) {
+    record.attempts = attempts.map((attempt) => {
+      const row = attempt && typeof attempt === "object" ? attempt as Record<string, unknown> : {};
+      const attemptResult = row.result && typeof row.result === "object" ? row.result as Record<string, unknown> : {};
+      return autScore(attemptResult, row.savedAt);
+    });
+  }
+  return record;
 }
 
 async function userDetails(userId: string) {
