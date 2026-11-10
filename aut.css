@@ -426,7 +426,7 @@
         linear-gradient(180deg, #fffefb 0%, #fff4dc 100%);
     border: 4px solid #ff6b8b;
     box-shadow: 0 12px 0 rgba(255, 107, 139, 0.16), 0 16px 28px rgba(30, 58, 138, 0.14);
-    transform: rotate(-8deg);
+    transform: none;
 }
 
 .aut-change-card::before {
@@ -441,7 +441,39 @@
 .aut-change-card.after {
     border-color: #2a9d8f;
     box-shadow: 0 12px 0 rgba(42, 157, 143, 0.16), 0 16px 28px rgba(30, 58, 138, 0.14);
-    transform: rotate(8deg);
+    transform: none;
+}
+
+.aut-change-arrow {
+    flex: 0 0 auto;
+    width: 52px;
+    height: 28px;
+    position: relative;
+}
+
+.aut-change-arrow::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 16px;
+    top: 50%;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 6px;
+    background: #1e3a8a;
+}
+
+.aut-change-arrow::after {
+    content: "";
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -11px;
+    border-top: 6px solid #1e3a8a;
+    border-right: 6px solid #1e3a8a;
+    transform: rotate(45deg);
 }
 
 .aut-change-card.after::before {
@@ -464,7 +496,7 @@
     top: auto;
     left: auto;
     right: 18px;
-    bottom: 16px;
+    bottom: 22px;
     transform: rotate(180deg);
 }
 
@@ -556,12 +588,26 @@
 
 @media (max-width: 640px) {
     .aut-change-cards {
-        flex-direction: column;
-        gap: 16px;
+        flex-direction: row;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 0 6px;
     }
     .aut-change-card,
     .aut-change-card.after {
-        width: min(220px, 78vw);
+        width: auto;
+        flex: 1 1 0;
+        max-width: 160px;
+        min-width: 0;
         transform: none;
     }
+    .aut-card-face {
+        padding: 26px 8px 20px;
+    }
+    .aut-card-title { font-size: 0.78rem; }
+    .aut-card-label { font-size: 0.72rem; }
+    .aut-card-pips { font-size: 0.9rem; letter-spacing: 0.04em; }
+    .aut-change-arrow { width: 28px; }
+    .aut-change-card strong { font-size: 2rem; }
 }

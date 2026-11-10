@@ -1601,7 +1601,8 @@
 }
 
 .puzzle-message-hint {
-    margin: 0;
+    max-width: 420px;
+    margin: 4px auto 8px;
     text-align: center;
     font-size: 1.05rem;
     font-weight: 800;
@@ -1741,7 +1742,7 @@
 }
 
     </style>
-    <link rel="stylesheet" href="aut.css?v=20261110b">
+    <link rel="stylesheet" href="aut.css?v=20261110f">
 </head>
 <body>
     <!-- Header -->
@@ -2136,10 +2137,6 @@
 
         <div class="puzzle-container">
             <div class="puzzle-message-stack">
-            <p class="puzzle-message-hint">
-                <span class="lang-en">Click a finished box to reveal the penguin's message.</span>
-                <span class="lang-zh">點一下已完成的方格，揭開企鵝的訊息。</span>
-            </p>
             <div class="puzzle-penguin-message" id="puzzleMessage" style="
                 background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
                 color: white;
@@ -2158,6 +2155,10 @@
             </div>
         </div>
         
+        <p class="puzzle-message-hint">
+            <span class="lang-en">Click a finished box to reveal the penguin's message.</span>
+            <span class="lang-zh">點一下已完成的方格，揭開企鵝的訊息。</span>
+        </p>
         <div class="puzzle-pieces" id="puzzlePieces">
             <!-- Puzzle pieces will be added here by JavaScript -->
         </div>
@@ -6389,7 +6390,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js?v=20261110c"></script>
+<script src="aut.js?v=20261110d"></script>
 
 </body>
 </html>

@@ -182,7 +182,11 @@ function loadRecord() {
     }
 
     function scoreCards(pre, post) {
-        return '<div class="aut-change-cards">' + scoreCard('before', pre.total) + scoreCard('after', post.total) + '</div>';
+        return '<div class="aut-change-cards">' +
+            scoreCard('before', pre.total) +
+            '<span class="aut-change-arrow" aria-hidden="true"></span>' +
+            scoreCard('after', post.total) +
+            '</div>';
     }
 
     function celebrateMarkup() {
