@@ -78,6 +78,14 @@
         .user-button span { color: #777; font-size: 0.9rem; }
         .record h2 { margin-top: 0; color: var(--pink); }
         .record h3 { margin: 22px 0 8px; color: #8a6500; }
+        .input-block {
+            margin: 12px 0 16px;
+            padding: 14px 16px 8px;
+            border: 2px solid #f3d5de;
+            border-radius: 14px;
+            background: #fffdf8;
+        }
+        .input-block h4 { margin: 0 0 8px; color: #1e3a8a; }
         .line { margin: 4px 0; }
         .muted { color: #888; }
         .danger {
@@ -240,12 +248,16 @@
         }
 
         function inputRoundLabel(round) {
-            const english = ['First input', 'Second input', 'Third input', 'Fourth input', 'Fifth input'];
-            const chinese = ['第一次輸入', '第二次輸入', '第三次輸入', '第四次輸入', '第五次輸入'];
-            const index = Number(round) - 1;
+            const number = Number(round);
+            const teen = number % 100;
+            const suffix = teen >= 11 && teen <= 13 ? 'th'
+                : number % 10 === 1 ? 'st'
+                : number % 10 === 2 ? 'nd'
+                : number % 10 === 3 ? 'rd'
+                : 'th';
             return {
-                en: english[index] || ('Input ' + round),
-                zh: chinese[index] || ('第' + round + '次輸入')
+                en: number + suffix + ' input',
+                zh: '第' + number + '次輸入'
             };
         }
 
@@ -257,7 +269,7 @@
             });
         }
 
-        function activityInputRounds(responses) {
+        function activityInputRounds(responses, latestDrawing) {
             const attempts = responses && Array.isArray(responses.attempts) ? responses.attempts : [];
             const rounds = attempts.map(function (attempt, index) {
                 return {
@@ -270,7 +282,11 @@
             });
             const current = Object.assign({}, responses || {});
             delete current.attempts;
-            if (responseHasAnswers(current)) rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: '' });
+            if (responseHasAnswers(current)) {
+                rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: latestDrawing || '' });
+            } else if (!rounds.length && latestDrawing) {
+                rounds.push({ round: 1, responses: {}, drawingDataUrl: latestDrawing });
+            }
             return rounds;
         }
 
@@ -283,19 +299,26 @@
             return body;
         }
 
-        function activityBlock(title, responses, lines) {
+        function drawingLine(dataUrl) {
+            if (typeof dataUrl === 'string' && dataUrl.indexOf('data:image') === 0) {
+                return '<p class="line"><strong><span class="lang-en">Drawing</span><span class="lang-zh">圖畫</span>:</strong></p>' +
+                    '<img class="drawing" alt="Drawing" src="' + dataUrl + '">';
+            }
+            return '<p class="line"><strong><span class="lang-en">Drawing</span><span class="lang-zh">圖畫</span>:</strong> ' +
+                '<span class="muted"><span class="lang-en">No drawing saved.</span><span class="lang-zh">尚未保存圖畫。</span></span></p>';
+        }
+
+        function activityBlock(title, responses, lines, withDrawing, latestDrawing) {
             let body = '<h3>' + escapeText(title) + '</h3>';
-            const rounds = activityInputRounds(responses);
-            const separateRounds = !!(responses && Array.isArray(responses.attempts) && responses.attempts.length);
+            const rounds = activityInputRounds(responses, withDrawing ? latestDrawing : '');
             if (!rounds.length) return body + '<p class="muted">Nothing saved yet.</p>';
-            if (!separateRounds) return body + answerLines(rounds[0].responses, lines);
             rounds.forEach(function (round) {
                 const label = inputRoundLabel(round.round);
-                body += '<h4><span class="lang-en">' + label.en + '</span><span class="lang-zh">' + label.zh + '</span></h4>';
-                if (typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0) {
-                    body += '<img class="drawing" alt="" src="' + round.drawingDataUrl + '">';
-                }
+                body += '<section class="input-block">';
+                body += '<h4><span class="lang-en">' + label.en + ':</span><span class="lang-zh">' + label.zh + '：</span></h4>';
+                if (withDrawing) body += drawingLine(round.drawingDataUrl);
                 body += answerLines(round.responses, lines);
+                body += '</section>';
             });
             return body;
         }
@@ -350,11 +373,14 @@
                 return body;
             }
             attempts.forEach(function (attempt, index) {
+                const label = inputRoundLabel(index + 1);
                 const when = attempt.savedAt ? String(attempt.savedAt).slice(0, 16).replace('T', ' ') : '';
-                body += '<h3>' + escapeText(title + ' ' + (index + 1)) + '</h3>';
+                body += '<section class="input-block">';
+                body += '<h4><span class="lang-en">' + label.en + ':</span><span class="lang-zh">' + label.zh + '：</span></h4>';
                 if (when) body += field('Saved', when);
                 body += scoreFields(attempt.result || {});
                 body += analysisLines(attempt.result || {});
+                body += '</section>';
             });
             return body;
         }
@@ -396,14 +422,10 @@
                     ? '<img class="signature" alt="Child signature" src="' + signature + '">'
                     : '<p class="muted">No child signature saved.</p>';
             }
-            html += '<h3>Drawing</h3>';
-            html += drawing.indexOf('data:image') === 0
-                ? '<img class="drawing" alt="Animal drawing" src="' + drawing + '">'
-                : '<p class="muted">No drawing saved.</p>';
             html += activityBlock('1. Transformation of Animals', animal, [
                 ['animalName', 'Name of the new animal'],
                 ['animalDescription', 'Description']
-            ]);
+            ], true, drawing);
             html += activityBlock('2. What If...?', (byId[2] || {}).responses || null, [1, 2, 3, 4, 5, 6].map(function (n) {
                 return ['Result' + n, 'Result ' + n];
             }));

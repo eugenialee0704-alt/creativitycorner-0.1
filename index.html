@@ -5986,6 +5986,7 @@ async function displayUserDetails(user) {
 
     // Attach submissions to the selected user object for later tab loading
     selectedUserForAdmin._submissions = submissions;
+    selectedUserForAdmin._drawingDataUrl = details.drawingDataUrl || '';
 
     createActivityTabs(selectedUserForAdmin);
 }
@@ -6077,7 +6078,8 @@ function renderAutAdmin(submission, title) {
     return attempts.map(function (attempt, index) {
         const result = attempt.result || {};
         const when = attempt.savedAt ? ' (' + escapeAdminText(String(attempt.savedAt).slice(0, 16).replace('T', ' ')) + ')' : '';
-        const heading = attempts.length > 1 ? title + ' ' + (index + 1) : title;
+        const roundLabel = inputRoundLabel(index + 1);
+        const heading = attempts.length > 1 ? roundLabel.en + ' / ' + roundLabel.zh : title;
         return '<p><strong>' + heading + '</strong>' + when + ' — Fluency ' + (result.fluency ?? '—') +
             ', Flexibility ' + (result.flexibility ?? '—') +
             ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result);
@@ -6149,12 +6151,16 @@ function getActivityName(activityId, language) {
 
 // Load activity responses for admin
 function inputRoundLabel(round) {
-    const english = ['First input', 'Second input', 'Third input', 'Fourth input', 'Fifth input'];
-    const chinese = ['第一次輸入', '第二次輸入', '第三次輸入', '第四次輸入', '第五次輸入'];
-    const index = Number(round) - 1;
+    const number = Number(round);
+    const teen = number % 100;
+    const suffix = teen >= 11 && teen <= 13 ? 'th'
+        : number % 10 === 1 ? 'st'
+        : number % 10 === 2 ? 'nd'
+        : number % 10 === 3 ? 'rd'
+        : 'th';
     return {
-        en: english[index] || ('Input ' + round),
-        zh: chinese[index] || ('第' + round + '次輸入')
+        en: number + suffix + ' input',
+        zh: '第' + number + '次輸入'
     };
 }
 
@@ -6166,7 +6172,7 @@ function responseHasAnswers(responses) {
     });
 }
 
-function activityInputRounds(responses) {
+function activityInputRounds(responses, latestDrawing) {
     const attempts = responses && Array.isArray(responses.attempts) ? responses.attempts : [];
     const rounds = attempts.map(function (attempt, index) {
         const saved = attempt && attempt.responses ? attempt.responses : {};
@@ -6179,7 +6185,9 @@ function activityInputRounds(responses) {
     const current = Object.assign({}, responses || {});
     delete current.attempts;
     if (responseHasAnswers(current)) {
-        rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: '' });
+        rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: latestDrawing || '' });
+    } else if (!rounds.length && latestDrawing) {
+        rounds.push({ round: 1, responses: {}, drawingDataUrl: latestDrawing });
     }
     return rounds;
 }
@@ -6207,40 +6215,32 @@ function loadActivityResponsesForAdmin(user, activityId) {
     const submissions = user._submissions || [];
     const submission = submissions.find(s => Number(s.activityId) === Number(activityId));
     const responses = submission ? (submission.responses || {}) : null;
-    const rounds = activityInputRounds(responses);
-    const separateRounds = !!(responses && Array.isArray(responses.attempts) && responses.attempts.length);
+    const latestDrawing = Number(activityId) === 1
+        ? (user._drawingDataUrl || (submission && submission.metadata && submission.metadata.animalDrawingDataUrl) || '')
+        : '';
+    const rounds = activityInputRounds(responses, latestDrawing);
 
     let html = '';
     if (!rounds.length) {
         html = `<p class="lang-en" style="text-align: center; color: #999;">No responses for this activity</p>
                 <p class="lang-zh" style="text-align: center; color: #999;">此活動沒有回答</p>`;
-    } else if (!separateRounds) {
-        html = '<div class="admin-responses">' + adminResponseFields(rounds[0].responses) + '</div>';
     } else {
         html = rounds.map(function (round) {
             const label = inputRoundLabel(round.round);
-            const drawing = typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0
-                ? '<img alt="" src="' + round.drawingDataUrl + '" style="max-width: 280px; border-radius: 8px;">'
-                : '';
-            return '<div class="admin-responses"><h4><span class="lang-en">' + label.en + '</span><span class="lang-zh">' + label.zh + '</span></h4>' +
+            let drawing = '';
+            if (Number(activityId) === 1) {
+                drawing = typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0
+                    ? '<p><strong><span class="lang-en">Drawing</span><span class="lang-zh">圖畫</span>:</strong></p><img alt="Drawing" src="' + round.drawingDataUrl + '" style="max-width: 280px; border-radius: 8px; display: block; margin-bottom: 8px;">'
+                    : '<p><strong><span class="lang-en">Drawing</span><span class="lang-zh">圖畫</span>:</strong> <span class="lang-en">No drawing saved.</span><span class="lang-zh">尚未保存圖畫。</span></p>';
+            }
+            return '<div class="admin-responses" style="margin:12px 0;padding:12px 14px;border:2px solid #f3d5de;border-radius:14px;background:#fffdf8;">' +
+                '<h4 style="margin:0 0 8px;color:#1e3a8a;"><span class="lang-en">' + label.en + ':</span><span class="lang-zh">' + label.zh + '：</span></h4>' +
                 drawing + adminResponseFields(round.responses) + '</div>';
         }).join('');
     }
 
     activityContentDisplay.innerHTML = html;
-
-    // Drawing (Activity 1) saved under metadata.animalDrawingDataUrl
-    if (activityId === 1) {
-        const drawingDataUrl = submission?.metadata?.animalDrawingDataUrl;
-        if (drawingDataUrl) {
-            drawingDisplaySection.style.display = 'block';
-            userDrawing.src = drawingDataUrl;
-        } else {
-            drawingDisplaySection.style.display = 'none';
-        }
-    } else {
-        drawingDisplaySection.style.display = 'none';
-    }
+    if (drawingDisplaySection) drawingDisplaySection.style.display = 'none';
 }
 
 // Modify the existing hideAllSections function to include admin dashboard
