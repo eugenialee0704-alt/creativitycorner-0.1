@@ -233,6 +233,102 @@ def save_drawing(user_id, data_url):
     return relative
 
 
+def archive_drawing(user_id, round_number):
+    source = os.path.join(DRAWING_DIR, user_id + ".png")
+    if not os.path.isfile(source):
+        return None
+    name = user_id + "-round-" + str(round_number) + ".png"
+    os.makedirs(DRAWING_DIR, exist_ok=True)
+    target = os.path.join(DRAWING_DIR, name)
+    with open(source, "rb") as incoming, open(target, "wb") as outgoing:
+        outgoing.write(incoming.read())
+    os.remove(source)
+    return os.path.join("data", "drawings", name)
+
+
+def drawing_file_url(user_id, relative):
+    name = os.path.basename(str(relative or ""))
+    if name != user_id + ".png" and not name.startswith(user_id + "-round-"):
+        return ""
+    if not name.endswith(".png"):
+        return ""
+    path = os.path.join(DRAWING_DIR, name)
+    if not os.path.isfile(path):
+        return ""
+    with open(path, "rb") as handle:
+        encoded = base64.b64encode(handle.read()).decode("ascii")
+    return "data:image/png;base64," + encoded
+
+
+def answer_fields(responses):
+    if not isinstance(responses, dict):
+        return {}
+    return {key: value for key, value in responses.items() if key != "attempts"}
+
+
+def has_answers(responses):
+    for value in answer_fields(responses).values():
+        text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+        text = str(text or "").strip()
+        if text and text not in ("[]", "{}"):
+            return True
+    return False
+
+
+def child_responses(responses):
+    current = answer_fields(responses)
+    return current if has_answers(current) else {}
+
+
+def activity_rounds(responses):
+    responses = responses if isinstance(responses, dict) else {}
+    attempts = responses.get("attempts") if isinstance(responses.get("attempts"), list) else []
+    rounds = []
+    for attempt in attempts:
+        if not isinstance(attempt, dict):
+            continue
+        saved = attempt.get("responses") if isinstance(attempt.get("responses"), dict) else {}
+        if not has_answers(saved) and not attempt.get("drawingFile"):
+            continue
+        rounds.append({
+            "round": attempt.get("round") or len(rounds) + 1,
+            "savedAt": attempt.get("savedAt"),
+            "responses": saved,
+            "drawingFile": attempt.get("drawingFile"),
+        })
+    current = answer_fields(responses)
+    if has_answers(current):
+        rounds.append({"round": len(rounds) + 1, "responses": current})
+    return rounds
+
+
+INPUT_LABELS = ["First input", "Second input", "Third input", "Fourth input", "Fifth input"]
+
+
+def input_label(round_number):
+    index = int(round_number) - 1
+    if 0 <= index < len(INPUT_LABELS):
+        return INPUT_LABELS[index]
+    return "Input " + str(round_number)
+
+
+def labeled_inputs(responses):
+    if not isinstance(responses, dict) or not isinstance(responses.get("attempts"), list) or not responses.get("attempts"):
+        return None
+    labeled = []
+    for item in activity_rounds(responses):
+        entry = {
+            "label": input_label(item["round"]),
+            "round": item["round"],
+            "savedAt": item.get("savedAt"),
+            "responses": item.get("responses") or {},
+        }
+        if item.get("drawingFile"):
+            entry["drawingFile"] = item["drawingFile"]
+        labeled.append(entry)
+    return labeled or None
+
+
 def sorted_texts(raw):
     parsed = load_json(raw, None) if isinstance(raw, str) else raw
     if not isinstance(parsed, list):
@@ -344,6 +440,7 @@ def readable_record(user, consent, submissions):
             "nameOfNewAnimal": animal.get("animalName", ""),
             "descriptionOfNewAnimal": animal.get("animalDescription", ""),
             "drawingFile": drawing,
+            "inputs": labeled_inputs(animal),
         },
         "whatIfChallenge": {
             "result1": what_if.get("Result1", ""),
@@ -352,6 +449,7 @@ def readable_record(user, consent, submissions):
             "result4": what_if.get("Result4", ""),
             "result5": what_if.get("Result5", ""),
             "result6": what_if.get("Result6", ""),
+            "inputs": labeled_inputs(what_if),
         },
         "wordAssociation": {
             "word1": words.get("word1", ""),
@@ -360,6 +458,7 @@ def readable_record(user, consent, submissions):
             "word4": words.get("word4", ""),
             "word5": words.get("word5", ""),
             "story": words.get("wordStory", ""),
+            "inputs": labeled_inputs(words),
         },
         "penguinInTheDesert": {
             "idea1": penguin.get("idea1", ""),
@@ -367,6 +466,7 @@ def readable_record(user, consent, submissions):
             "idea3": penguin.get("idea3", ""),
             "idea4": penguin.get("idea4", ""),
             "idea5": penguin.get("idea5", ""),
+            "inputs": labeled_inputs(penguin),
         },
         "brainstorming": {
             "solution1": brainstorm.get("solution1", ""),
@@ -379,6 +479,7 @@ def readable_record(user, consent, submissions):
                 SORT_BOXES["3"]: sorted_texts(brainstorm.get("category3")),
                 SORT_BOXES["4"]: sorted_texts(brainstorm.get("category4")),
             },
+            "inputs": labeled_inputs(brainstorm),
         },
         "creativityAssessment": {
             "pretest": pre,
@@ -630,6 +731,17 @@ def save_submission(body):
             "UPDATE users SET completed_activities = ?, updated_at = ? WHERE id = ?",
             (json.dumps(merged), now_iso(), user_id),
         )
+        if activity_id in (1, 2, 3, 4, 5):
+            existing = connection.execute(
+                "SELECT responses_json FROM submissions WHERE user_id = ? AND activity_id = ?",
+                (user_id, activity_id),
+            ).fetchone()
+            stored = load_json(existing["responses_json"], {}) if existing else {}
+            attempts = stored.get("attempts") if isinstance(stored, dict) and isinstance(stored.get("attempts"), list) else []
+            current = answer_fields(responses)
+            responses = dict(current)
+            if attempts:
+                responses["attempts"] = attempts
         connection.execute(
             """
             INSERT INTO submissions
@@ -649,6 +761,67 @@ def save_submission(body):
                 json.dumps(metadata, ensure_ascii=False),
                 now_iso(),
             ),
+        )
+        write_records(connection)
+    return 200, {"ok": True}
+
+
+def reset_activities(body):
+    user_id = str(body.get("userId") or "")
+    if not user_id:
+        return 400, {"error": "missing-user"}
+    with connect() as connection:
+        found = connection.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not found:
+            return 404, {"error": "User not found"}
+        rows = connection.execute(
+            "SELECT * FROM submissions WHERE user_id = ? AND activity_id IN (1, 2, 3, 4, 5)",
+            (user_id,),
+        ).fetchall()
+        for row in rows:
+            responses = load_json(row["responses_json"], {})
+            metadata = load_json(row["metadata_json"], {})
+            if not isinstance(responses, dict):
+                responses = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            attempts = responses.get("attempts") if isinstance(responses.get("attempts"), list) else []
+            current = answer_fields(responses)
+            drawing_file = metadata.get("drawingFile") if row["activity_id"] == 1 else None
+            if has_answers(current) or drawing_file:
+                round_number = len(attempts) + 1
+                if drawing_file:
+                    archived = archive_drawing(user_id, round_number)
+                    if archived:
+                        drawing_file = archived
+                attempt = {
+                    "round": round_number,
+                    "savedAt": row["saved_at"],
+                    "responses": current,
+                }
+                if drawing_file:
+                    attempt["drawingFile"] = drawing_file
+                attempts.append(attempt)
+            metadata.pop("animalDrawingDataUrl", None)
+            metadata.pop("drawingFile", None)
+            metadata["puzzleProgress"] = 0
+            connection.execute(
+                """
+                UPDATE submissions
+                SET responses_json = ?, completed_activities = '[]', metadata_json = ?, saved_at = ?
+                WHERE user_id = ? AND activity_id = ?
+                """,
+                (
+                    json.dumps({"attempts": attempts}, ensure_ascii=False),
+                    json.dumps(metadata, ensure_ascii=False),
+                    now_iso(),
+                    user_id,
+                    row["activity_id"],
+                ),
+            )
+        connection.execute(
+            "UPDATE users SET completed_activities = '[]', updated_at = ? WHERE id = ?",
+            (now_iso(), user_id),
         )
         write_records(connection)
     return 200, {"ok": True}
@@ -701,7 +874,7 @@ def account_payload(connection, row, token=""):
             activities.append({
                 "id": activity_id,
                 "savedAt": item.get("savedAt"),
-                "responses": item.get("responses") or {},
+                "responses": child_responses(item.get("responses") or {}),
             })
     payload = {
         "user": user,
@@ -998,6 +1171,11 @@ def user_details(user_id):
     for item in submissions:
         if item["activityId"] == 1:
             drawing = drawing_data_url(user_id, item.get("metadata") or {})
+            responses = item.get("responses") if isinstance(item.get("responses"), dict) else {}
+            attempts = responses.get("attempts") if isinstance(responses.get("attempts"), list) else []
+            for attempt in attempts:
+                if isinstance(attempt, dict) and attempt.get("drawingFile"):
+                    attempt["drawingDataUrl"] = drawing_file_url(user_id, attempt.get("drawingFile"))
     return 200, {
         "user": user_public(row),
         "consent": consent,
@@ -1155,6 +1333,14 @@ class RecordHandler(SimpleHTTPRequestHandler):
                 self.send_json(400, {"error": "Invalid JSON"})
                 return
             status, payload = save_submission(body)
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/public/reset-activities":
+            body = self.read_json()
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = reset_activities(body)
             self.send_json(status, payload)
             return
         if method == "GET" and path == "/api/admin/users":

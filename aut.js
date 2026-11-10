@@ -276,12 +276,40 @@ function loadRecord() {
         }
         if (activities) {
             activities.addEventListener('click', function () {
-                const popup = document.getElementById('autScoreResult');
-                if (popup) popup.remove();
-                if (typeof showDashboard === 'function') showDashboard();
-                const cards = document.getElementById('activityCards');
-                if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                retryActivities(activities);
             });
+        }
+    }
+
+    async function retryActivities(button) {
+        if (!currentUser || (button && button.disabled)) return;
+        if (button) button.disabled = true;
+        const popup = document.getElementById('autScoreResult');
+        try {
+            if (typeof upsertCurrentUserToBackend !== 'function' || typeof postJson !== 'function') {
+                throw new Error('offline');
+            }
+            const userId = await upsertCurrentUserToBackend();
+            if (!userId) throw new Error('offline');
+            await postJson('/api/public/reset-activities', { userId: userId });
+            currentUser.completedActivities = [];
+            localStorage.setItem('creativityCornerUser', JSON.stringify(currentUser));
+            for (let id = 1; id <= 5; id++) {
+                localStorage.removeItem('activity_' + id + '_responses_' + currentUser.name);
+            }
+            localStorage.removeItem('animalDrawing_' + currentUser.name);
+            localStorage.removeItem('puzzleProgress_' + currentUser.name);
+            if (popup) popup.remove();
+            applyActivityLocks();
+            if (typeof showDashboard === 'function') showDashboard();
+            const cards = document.getElementById('activityCards');
+            if (cards) cards.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (error) {
+            if (button) button.disabled = false;
+            const chinese = typeof currentLanguage !== 'undefined' && currentLanguage === 'zh';
+            window.alert(chinese
+                ? '未能開啟記錄冊。請檢查網絡連線，然後再試。'
+                : 'The record book could not be opened. Check the internet connection, then try again.');
         }
     }
 
@@ -707,8 +735,8 @@ window.prepareAutForAccount = function (user) {
         return {
             kind: 'same',
             html: langPair(
-                '<p class="aut-result-note">Your creativity score stayed the same. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
-                '<p class="aut-result-note">你的創意分數和上次一樣。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
+                '<p class="aut-result-note">Your creativity score stayed the same. You are still a creative thinker, and one more try can help your ideas grow even bigger. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
+                '<p class="aut-result-note">你的創意分數和上次一樣。你仍然是個有創意的人，再試一次可以讓你的想法變得更厲害。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
             ),
             buttonEn: 'Retake the creativity check',
             buttonZh: '重新做創意測試',

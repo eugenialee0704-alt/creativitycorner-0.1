@@ -160,6 +160,84 @@ async function saveDrawing(userId: string, dataUrl: unknown) {
   }
 }
 
+async function archiveDrawing(userId: string, round: number) {
+  const source = `${userId}.png`;
+  const target = `${userId}-round-${round}.png`;
+  const downloaded = await supabase.storage.from("drawings").download(source);
+  if (downloaded.error || !downloaded.data) return null;
+  const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+  const uploaded = await supabase.storage.from("drawings").upload(target, bytes, {
+    upsert: true,
+    contentType: "image/png",
+  });
+  if (uploaded.error) return null;
+  await supabase.storage.from("drawings").remove([source]);
+  return `data/drawings/${target}`;
+}
+
+async function drawingFileUrl(userId: string, relative: unknown) {
+  const name = String(relative ?? "").split("/").pop() ?? "";
+  if (name !== `${userId}.png` && !name.startsWith(`${userId}-round-`)) return "";
+  if (!name.endsWith(".png")) return "";
+  const downloaded = await supabase.storage.from("drawings").download(name);
+  if (downloaded.error || !downloaded.data) return "";
+  const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
+function answerFields(responses: Record<string, unknown>) {
+  const current: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(responses)) {
+    if (key !== "attempts") current[key] = value;
+  }
+  return current;
+}
+
+function hasAnswers(responses: Record<string, unknown>) {
+  return Object.values(answerFields(responses)).some((value) => {
+    const text = typeof value === "string" ? value.trim() : JSON.stringify(value ?? "");
+    return text !== "" && text !== "[]" && text !== "{}";
+  });
+}
+
+function childResponses(responses: unknown) {
+  const source = responses && typeof responses === "object" ? responses as Record<string, unknown> : {};
+  const current = answerFields(source);
+  return hasAnswers(current) ? current : {};
+}
+
+const INPUT_LABELS = ["First input", "Second input", "Third input", "Fourth input", "Fifth input"];
+
+function inputLabel(round: number) {
+  return INPUT_LABELS[round - 1] ?? `Input ${round}`;
+}
+
+function labeledInputs(responses: Record<string, unknown>) {
+  const attempts = Array.isArray(responses.attempts) ? responses.attempts : [];
+  if (!attempts.length) return undefined;
+  const rounds = attempts.flatMap((attempt, index) => {
+    const row = attempt && typeof attempt === "object" ? attempt as Record<string, unknown> : {};
+    const saved = row.responses && typeof row.responses === "object" ? row.responses as Record<string, unknown> : {};
+    if (!hasAnswers(saved) && !row.drawingFile) return [];
+    const round = Number(row.round) || index + 1;
+    return [{
+      label: inputLabel(round),
+      round,
+      savedAt: row.savedAt,
+      responses: saved,
+      ...(row.drawingFile ? { drawingFile: row.drawingFile } : {}),
+    }];
+  });
+  const current = answerFields(responses);
+  if (hasAnswers(current)) {
+    const round = rounds.length + 1;
+    rounds.push({ label: inputLabel(round), round, savedAt: undefined, responses: current });
+  }
+  return rounds.length ? rounds : undefined;
+}
+
 function submissionFromRow(row: Record<string, unknown>) {
   return {
     activityId: row.activity_id,
@@ -190,7 +268,7 @@ async function accountPayload(row: Record<string, unknown>, token = "") {
       continue;
     }
     if (activityId >= 1 && activityId <= 5) {
-      activities.push({ id: activityId, savedAt: item.savedAt, responses: item.responses || {} });
+      activities.push({ id: activityId, savedAt: item.savedAt, responses: childResponses(item.responses) });
     }
   }
   const payload: Record<string, unknown> = {
@@ -415,14 +493,61 @@ async function saveSubmission(body: Record<string, unknown>) {
   const completed = activityIds(body.completedActivities);
   const merged = activityIds([...(loadJson(found.completed_activities, []) as unknown[]), ...completed]);
   await supabase.from("users").update({ completed_activities: JSON.stringify(merged), updated_at: nowIso() }).eq("id", userId);
+  let storedResponses = responses as Record<string, unknown>;
+  if ([1, 2, 3, 4, 5].includes(activityId)) {
+    const { data: existing } = await supabase.from("submissions").select("responses_json").eq("user_id", userId).eq("activity_id", activityId).maybeSingle();
+    const previous = existing ? loadJson(existing.responses_json, {}) as Record<string, unknown> : {};
+    const attempts = Array.isArray(previous.attempts) ? previous.attempts : [];
+    storedResponses = answerFields(storedResponses);
+    if (attempts.length) storedResponses.attempts = attempts;
+  }
   await supabase.from("submissions").upsert({
     user_id: userId,
     activity_id: activityId,
-    responses_json: JSON.stringify(responses),
+    responses_json: JSON.stringify(storedResponses),
     completed_activities: JSON.stringify(completed),
     metadata_json: JSON.stringify(metadata),
     saved_at: nowIso(),
   });
+  return [200, { ok: true }] as const;
+}
+
+async function resetActivities(body: Record<string, unknown>) {
+  const userId = String(body.userId ?? "");
+  if (!userId) return [400, { error: "missing-user" }] as const;
+  const { data: found } = await supabase.from("users").select("id").eq("id", userId).maybeSingle();
+  if (!found) return [404, { error: "User not found" }] as const;
+  const { data: rows } = await supabase.from("submissions").select("*").eq("user_id", userId).in("activity_id", [1, 2, 3, 4, 5]);
+  for (const row of rows ?? []) {
+    const responses = loadJson(row.responses_json, {}) as Record<string, unknown>;
+    const metadata = loadJson(row.metadata_json, {}) as Record<string, unknown>;
+    const attempts = Array.isArray(responses.attempts) ? [...responses.attempts] : [];
+    const current = answerFields(responses);
+    let drawingFile = Number(row.activity_id) === 1 ? metadata.drawingFile : null;
+    if (hasAnswers(current) || drawingFile) {
+      const round = attempts.length + 1;
+      if (drawingFile) {
+        const archived = await archiveDrawing(userId, round);
+        if (archived) drawingFile = archived;
+      }
+      attempts.push({
+        round,
+        savedAt: row.saved_at,
+        responses: current,
+        ...(drawingFile ? { drawingFile } : {}),
+      });
+    }
+    delete metadata.animalDrawingDataUrl;
+    delete metadata.drawingFile;
+    metadata.puzzleProgress = 0;
+    await supabase.from("submissions").update({
+      responses_json: JSON.stringify({ attempts }),
+      completed_activities: "[]",
+      metadata_json: JSON.stringify(metadata),
+      saved_at: nowIso(),
+    }).eq("user_id", userId).eq("activity_id", row.activity_id);
+  }
+  await supabase.from("users").update({ completed_activities: "[]", updated_at: nowIso() }).eq("id", userId);
   return [200, { ok: true }] as const;
 }
 
@@ -539,7 +664,15 @@ async function userDetails(userId: string) {
   const submissions = (rows ?? []).map((item) => submissionFromRow(item));
   let drawing = "";
   for (const item of submissions) {
-    if (Number(item.activityId) === 1) drawing = await drawingDataUrl(userId, (item.metadata ?? {}) as Record<string, unknown>);
+    if (Number(item.activityId) !== 1) continue;
+    drawing = await drawingDataUrl(userId, (item.metadata ?? {}) as Record<string, unknown>);
+    const responses = item.responses && typeof item.responses === "object" ? item.responses as Record<string, unknown> : {};
+    const attempts = Array.isArray(responses.attempts) ? responses.attempts : [];
+    for (const attempt of attempts) {
+      if (!attempt || typeof attempt !== "object") continue;
+      const row = attempt as Record<string, unknown>;
+      if (row.drawingFile) row.drawingDataUrl = await drawingFileUrl(userId, row.drawingFile);
+    }
   }
   return [200, {
     user: userPublic(row),
@@ -610,6 +743,7 @@ Deno.serve(async (request) => {
     "POST /api/public/consent": () => saveConsent(body),
     "POST /api/public/aut-rate": () => rateWithChatbot(body),
     "POST /api/public/activity-submission": () => saveSubmission(body),
+    "POST /api/public/reset-activities": () => resetActivities(body),
   };
   const route = routes[`${request.method} ${path}`];
   if (route) {
@@ -681,8 +815,12 @@ Deno.serve(async (request) => {
           nameOfNewAnimal: responseOf(1).animalName ?? "",
           descriptionOfNewAnimal: responseOf(1).animalDescription ?? "",
           drawingFile: ((byActivity.get(1)?.metadata ?? {}) as Record<string, unknown>).drawingFile ?? null,
+          inputs: labeledInputs(responseOf(1)),
         },
-        whatIfChallenge: Object.fromEntries([1, 2, 3, 4, 5, 6].map((n) => [`result${n}`, responseOf(2)[`Result${n}`] ?? ""])),
+        whatIfChallenge: {
+          ...Object.fromEntries([1, 2, 3, 4, 5, 6].map((n) => [`result${n}`, responseOf(2)[`Result${n}`] ?? ""])),
+          inputs: labeledInputs(responseOf(2)),
+        },
         wordAssociation: {
           word1: responseOf(3).word1 ?? "",
           word2: responseOf(3).word2 ?? "",
@@ -690,14 +828,19 @@ Deno.serve(async (request) => {
           word4: responseOf(3).word4 ?? "",
           word5: responseOf(3).word5 ?? "",
           story: responseOf(3).wordStory ?? "",
+          inputs: labeledInputs(responseOf(3)),
         },
-        penguinInTheDesert: Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`idea${n}`, responseOf(4)[`idea${n}`] ?? ""])),
+        penguinInTheDesert: {
+          ...Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`idea${n}`, responseOf(4)[`idea${n}`] ?? ""])),
+          inputs: labeledInputs(responseOf(4)),
+        },
         brainstorming: {
           solution1: brainstorm.solution1 ?? "",
           solution2: brainstorm.solution2 ?? "",
           solution3: brainstorm.solution3 ?? "",
           solution4: brainstorm.solution4 ?? "",
           sortedBoxes: Object.fromEntries(Object.entries(SORT_BOXES).map(([key, label]) => [label, sortedTexts(brainstorm[`category${key}`])])),
+          inputs: labeledInputs(brainstorm),
         },
         creativityAssessment: {
           pretest: pre,

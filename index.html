@@ -5959,14 +5959,10 @@ async function displayUserDetails(user) {
         `;
     }
 
-    // Progress
-    const completedSet = new Set();
-    for (const s of submissions) {
-        if (Array.isArray(s.completedActivities)) {
-            for (const id of s.completedActivities) completedSet.add(id);
-        }
-    }
-    const completedActivities = Array.from(completedSet);
+    // Progress follows the child's current round. Earlier rounds stay in each activity's saved inputs.
+    const completedActivities = Array.isArray(fullUser.completedActivities)
+        ? fullUser.completedActivities.map(Number)
+        : [];
     let progressHTML = '';
     for (let i = 1; i <= 5; i++) {
         const isCompleted = completedActivities.includes(i);
@@ -6152,31 +6148,83 @@ function getActivityName(activityId, language) {
 }
 
 // Load activity responses for admin
+function inputRoundLabel(round) {
+    const english = ['First input', 'Second input', 'Third input', 'Fourth input', 'Fifth input'];
+    const chinese = ['第一次輸入', '第二次輸入', '第三次輸入', '第四次輸入', '第五次輸入'];
+    const index = Number(round) - 1;
+    return {
+        en: english[index] || ('Input ' + round),
+        zh: chinese[index] || ('第' + round + '次輸入')
+    };
+}
+
+function responseHasAnswers(responses) {
+    return Object.entries(responses || {}).some(function (entry) {
+        if (entry[0] === 'attempts') return false;
+        const shown = responseValue(entry[0], entry[1]).trim();
+        return shown !== '' && shown !== '(none)';
+    });
+}
+
+function activityInputRounds(responses) {
+    const attempts = responses && Array.isArray(responses.attempts) ? responses.attempts : [];
+    const rounds = attempts.map(function (attempt, index) {
+        const saved = attempt && attempt.responses ? attempt.responses : {};
+        return {
+            round: attempt && attempt.round ? attempt.round : index + 1,
+            responses: saved,
+            drawingDataUrl: attempt && attempt.drawingDataUrl ? attempt.drawingDataUrl : ''
+        };
+    }).filter(function (round) { return responseHasAnswers(round.responses) || round.drawingDataUrl; });
+    const current = Object.assign({}, responses || {});
+    delete current.attempts;
+    if (responseHasAnswers(current)) {
+        rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: '' });
+    }
+    return rounds;
+}
+
+function adminResponseFields(responses) {
+    let html = '';
+    for (const [key, value] of Object.entries(responses || {})) {
+        if (key === 'attempts') continue;
+        const shown = responseValue(key, value);
+        if (shown.trim() !== '' && shown !== '(none)') {
+            html += `
+                <div class="admin-response-item">
+                    <div class="question">${escapeAdminText(responseLabel(key))}:</div>
+                    <div class="answer">${escapeAdminText(shown)}</div>
+                </div>
+            `;
+        }
+    }
+    return html;
+}
+
 function loadActivityResponsesForAdmin(user, activityId) {
     if (!activityContentDisplay || !user) return;
 
     const submissions = user._submissions || [];
     const submission = submissions.find(s => Number(s.activityId) === Number(activityId));
     const responses = submission ? (submission.responses || {}) : null;
+    const rounds = activityInputRounds(responses);
+    const separateRounds = !!(responses && Array.isArray(responses.attempts) && responses.attempts.length);
 
     let html = '';
-    if (!responses) {
+    if (!rounds.length) {
         html = `<p class="lang-en" style="text-align: center; color: #999;">No responses for this activity</p>
                 <p class="lang-zh" style="text-align: center; color: #999;">此活動沒有回答</p>`;
+    } else if (!separateRounds) {
+        html = '<div class="admin-responses">' + adminResponseFields(rounds[0].responses) + '</div>';
     } else {
-        html = '<div class="admin-responses">';
-        for (const [key, value] of Object.entries(responses)) {
-            const shown = responseValue(key, value);
-            if (shown.trim() !== '') {
-                html += `
-                    <div class="admin-response-item">
-                        <div class="question">${escapeAdminText(responseLabel(key))}:</div>
-                        <div class="answer">${escapeAdminText(shown)}</div>
-                    </div>
-                `;
-            }
-        }
-        html += '</div>';
+        html = rounds.map(function (round) {
+            const label = inputRoundLabel(round.round);
+            const drawing = typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0
+                ? '<img alt="" src="' + round.drawingDataUrl + '" style="max-width: 280px; border-radius: 8px;">'
+                : '';
+            return '<div class="admin-responses"><h4><span class="lang-en">' + label.en + '</span><span class="lang-zh">' + label.zh + '</span></h4>' +
+                drawing + adminResponseFields(round.responses) + '</div>';
+        }).join('');
     }
 
     activityContentDisplay.innerHTML = html;
@@ -6390,7 +6438,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js?v=20261110d"></script>
+<script src="aut.js?v=20261110g"></script>
 
 </body>
 </html>

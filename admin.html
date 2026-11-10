@@ -239,12 +239,63 @@
             }).filter(Boolean).join(', ');
         }
 
-        function activityBlock(title, responses, lines) {
-            let body = '<h3>' + escapeText(title) + '</h3>';
-            if (!responses) return body + '<p class="muted">Nothing saved yet.</p>';
+        function inputRoundLabel(round) {
+            const english = ['First input', 'Second input', 'Third input', 'Fourth input', 'Fifth input'];
+            const chinese = ['第一次輸入', '第二次輸入', '第三次輸入', '第四次輸入', '第五次輸入'];
+            const index = Number(round) - 1;
+            return {
+                en: english[index] || ('Input ' + round),
+                zh: chinese[index] || ('第' + round + '次輸入')
+            };
+        }
+
+        function responseHasAnswers(responses) {
+            return Object.keys(responses || {}).some(function (key) {
+                if (key === 'attempts') return false;
+                const value = String(responses[key] == null ? '' : responses[key]).trim();
+                return value !== '' && value !== '[]' && value !== '{}';
+            });
+        }
+
+        function activityInputRounds(responses) {
+            const attempts = responses && Array.isArray(responses.attempts) ? responses.attempts : [];
+            const rounds = attempts.map(function (attempt, index) {
+                return {
+                    round: attempt && attempt.round ? attempt.round : index + 1,
+                    responses: attempt && attempt.responses ? attempt.responses : {},
+                    drawingDataUrl: attempt && attempt.drawingDataUrl ? attempt.drawingDataUrl : ''
+                };
+            }).filter(function (round) {
+                return responseHasAnswers(round.responses) || (typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0);
+            });
+            const current = Object.assign({}, responses || {});
+            delete current.attempts;
+            if (responseHasAnswers(current)) rounds.push({ round: rounds.length + 1, responses: current, drawingDataUrl: '' });
+            return rounds;
+        }
+
+        function answerLines(responses, lines) {
+            let body = '';
             lines.forEach(function (line) {
                 const value = line[0].indexOf('category') === 0 ? sortText(responses[line[0]]) : responses[line[0]];
                 body += field(line[1], value);
+            });
+            return body;
+        }
+
+        function activityBlock(title, responses, lines) {
+            let body = '<h3>' + escapeText(title) + '</h3>';
+            const rounds = activityInputRounds(responses);
+            const separateRounds = !!(responses && Array.isArray(responses.attempts) && responses.attempts.length);
+            if (!rounds.length) return body + '<p class="muted">Nothing saved yet.</p>';
+            if (!separateRounds) return body + answerLines(rounds[0].responses, lines);
+            rounds.forEach(function (round) {
+                const label = inputRoundLabel(round.round);
+                body += '<h4><span class="lang-en">' + label.en + '</span><span class="lang-zh">' + label.zh + '</span></h4>';
+                if (typeof round.drawingDataUrl === 'string' && round.drawingDataUrl.indexOf('data:image') === 0) {
+                    body += '<img class="drawing" alt="" src="' + round.drawingDataUrl + '">';
+                }
+                body += answerLines(round.responses, lines);
             });
             return body;
         }
