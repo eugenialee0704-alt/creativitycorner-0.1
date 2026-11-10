@@ -166,11 +166,18 @@ function loadRecord() {
         const title = kind === 'before'
             ? langPair('Before training', '訓練前')
             : langPair('After training', '訓練後');
+        const suit = kind === 'before' ? '⭐' : '💡';
+        const corner = '<span class="aut-card-corner" aria-hidden="true"><b>' + esc(total) + '</b><i>' + suit + '</i></span>';
         return '<article class="aut-change-card ' + kind + '">' +
-            '<div class="aut-card-art" aria-hidden="true"><span class="bulb">💡</span><span class="star">⭐</span><span class="spark">✨</span></div>' +
+            corner +
+            '<div class="aut-card-face">' +
+            '<div class="aut-card-pips" aria-hidden="true">' + suit + ' ' + suit + ' ' + suit + '</div>' +
             '<p class="aut-card-title">' + title + '</p>' +
             '<strong>' + esc(total) + '</strong>' +
             '<span class="aut-card-label">' + langPair('Creativity Scores', '創意分數') + '</span>' +
+            '<div class="aut-card-pips" aria-hidden="true">' + suit + ' ' + suit + ' ' + suit + '</div>' +
+            '</div>' +
+            '<span class="aut-card-corner bottom" aria-hidden="true"><b>' + esc(total) + '</b><i>' + suit + '</i></span>' +
             '</article>';
     }
 

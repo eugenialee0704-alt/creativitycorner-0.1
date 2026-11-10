@@ -1575,9 +1575,19 @@
     animation: none;
 }
 
+.puzzle-message-hint {
+    max-width: 560px;
+    margin: 0 auto 6px;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #1e3a8a;
+    line-height: 1.45;
+}
+
 .puzzle-instruction {
     max-width: 560px;
-    margin: 0 auto 24px;
+    margin: 0 auto 12px;
     background: #fff8e8;
     border: 3px solid #ffd166;
     border-radius: 18px;
@@ -1707,7 +1717,7 @@
 }
 
     </style>
-    <link rel="stylesheet" href="aut.css?v=20261110a">
+    <link rel="stylesheet" href="aut.css?v=20261110b">
 </head>
 <body>
     <!-- Header -->
@@ -2099,6 +2109,11 @@
             <p class="lang-en">This Penguin Puzzle Challenge is a picture made of five pieces. Finish one activity, and one piece of the puzzle will be revealed.</p>
             <p class="lang-zh">這個企鵝拼圖挑戰是一幅由五塊拼圖組成的圖畫。完成一個活動，就會揭開一塊拼圖。</p>
         </div>
+
+        <p class="puzzle-message-hint">
+            <span class="lang-en">Click a finished box to reveal the penguin's message.</span>
+            <span class="lang-zh">點一下已完成的方格，揭開企鵝的訊息。</span>
+        </p>
         
         <div class="puzzle-container">
             <div class="puzzle-image" id="puzzleImage">
@@ -6354,7 +6369,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js?v=20261110a"></script>
+<script src="aut.js?v=20261110b"></script>
 
 </body>
 </html>
