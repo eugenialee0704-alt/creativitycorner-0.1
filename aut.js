@@ -692,8 +692,8 @@ window.prepareAutForAccount = function (user) {
             return {
                 kind: 'down',
                 html: langPair(
-                    '<p class="aut-result-note down">Your creativity score went down this time. That can happen. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
-                    '<p class="aut-result-note down">這次你的創意分數下降了。這也沒關係。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
+                    '<p class="aut-result-note down">Your creativity score went down this time. You are still a creative thinker, and your ideas can grow even bigger. Do the activities again, then retake the creativity check. You can keep trying until your score goes up.</p>',
+                    '<p class="aut-result-note down">這次你的創意分數下降了。你仍然是個有創意的人，你的想法可以變得更厲害。再做一次活動，然後重新做創意測試。你可以一直再試，直到分數上升。</p>'
                 ),
                 buttonEn: 'Retake the creativity check',
                 buttonZh: '重新做創意測試',

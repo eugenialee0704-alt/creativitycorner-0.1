@@ -1575,9 +1575,33 @@
     animation: none;
 }
 
+.puzzle-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 0;
+    margin-top: 8px;
+}
+
+.puzzle-message-stack {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: min(320px, 92%);
+    max-width: 320px;
+    margin: 0 auto 8px;
+    transform: none;
+}
+
 .puzzle-message-hint {
-    max-width: 560px;
-    margin: 0 auto 6px;
+    margin: 0;
     text-align: center;
     font-size: 1.05rem;
     font-weight: 800;
@@ -1587,7 +1611,7 @@
 
 .puzzle-instruction {
     max-width: 560px;
-    margin: 0 auto 12px;
+    margin: 0 auto 24px;
     background: #fff8e8;
     border: 3px solid #ffd166;
     border-radius: 18px;
@@ -2110,20 +2134,13 @@
             <p class="lang-zh">這個企鵝拼圖挑戰是一幅由五塊拼圖組成的圖畫。完成一個活動，就會揭開一塊拼圖。</p>
         </div>
 
-        <p class="puzzle-message-hint">
-            <span class="lang-en">Click a finished box to reveal the penguin's message.</span>
-            <span class="lang-zh">點一下已完成的方格，揭開企鵝的訊息。</span>
-        </p>
-        
         <div class="puzzle-container">
-            <div class="puzzle-image" id="puzzleImage">
-                <!-- Puzzle pieces will be added here by JavaScript -->
-            </div>
+            <div class="puzzle-message-stack">
+            <p class="puzzle-message-hint">
+                <span class="lang-en">Click a finished box to reveal the penguin's message.</span>
+                <span class="lang-zh">點一下已完成的方格，揭開企鵝的訊息。</span>
+            </p>
             <div class="puzzle-penguin-message" id="puzzleMessage" style="
-                position: absolute;
-                top: -30px;
-                left: 50%;
-                transform: translateX(-50%);
                 background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
                 color: white;
                 padding: 10px 20px;
@@ -2131,10 +2148,13 @@
                 font-weight: bold;
                 box-shadow: 0 5px 15px rgba(0,0,0,0.2);
                 display: none;
-                z-index: 10;
             ">
                 <span class="lang-en">You're amazing! 🎉</span>
                 <span class="lang-zh">你太棒了！🎉</span>
+            </div>
+            </div>
+            <div class="puzzle-image" id="puzzleImage">
+                <!-- Puzzle pieces will be added here by JavaScript -->
             </div>
         </div>
         
@@ -6369,7 +6389,7 @@ if (testBtn) {
 
 </script>
 <script src="aut-score.js"></script>
-<script src="aut.js?v=20261110b"></script>
+<script src="aut.js?v=20261110c"></script>
 
 </body>
 </html>
