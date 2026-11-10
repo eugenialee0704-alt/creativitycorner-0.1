@@ -367,7 +367,8 @@
             const attempts = Array.isArray(responses.attempts) && responses.attempts.length
                 ? responses.attempts
                 : [{ savedAt: responses.savedAt, result: responses.result }];
-            if (attempts.length === 1) {
+            const boxEveryInput = title.indexOf('before training') !== -1;
+            if (attempts.length === 1 && !boxEveryInput) {
                 body += scoreFields(attempts[0].result || {});
                 body += analysisLines(attempts[0].result || {});
                 return body;
