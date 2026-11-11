@@ -6069,28 +6069,17 @@ function renderAutAdmin(submission, title) {
     const attempts = Array.isArray(responses.attempts) && responses.attempts.length
         ? responses.attempts
         : [{ savedAt: responses.savedAt, result: responses.result || {} }];
-    if (title.indexOf('Before') === 0) {
-        const blocks = attempts.map(function (attempt, index) {
-            const result = attempt.result || {};
-            const roundLabel = inputRoundLabel(index + 1);
-            return '<div class="admin-responses" style="margin:12px 0;padding:12px 14px;border:2px solid #f3d5de;border-radius:14px;background:#fffdf8;">' +
-                '<h4 style="margin:0 0 8px;color:#1e3a8a;"><span class="lang-en">' + roundLabel.en + ':</span><span class="lang-zh">' + roundLabel.zh + '：</span></h4>' +
-                '<p>Fluency ' + (result.fluency ?? '—') +
-                ', Flexibility ' + (result.flexibility ?? '—') +
-                ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result) +
-                '</div>';
-        }).join('');
-        return '<p><strong>' + title + '</strong></p>' + blocks;
-    }
-    return attempts.map(function (attempt, index) {
+    const blocks = attempts.map(function (attempt, index) {
         const result = attempt.result || {};
-        const when = attempt.savedAt ? ' (' + escapeAdminText(String(attempt.savedAt).slice(0, 16).replace('T', ' ')) + ')' : '';
         const roundLabel = inputRoundLabel(index + 1);
-        const heading = attempts.length > 1 ? roundLabel.en + ' / ' + roundLabel.zh : title;
-        return '<p><strong>' + heading + '</strong>' + when + ' — Fluency ' + (result.fluency ?? '—') +
+        return '<div class="admin-responses" style="margin:12px 0;padding:12px 14px;border:2px solid #f3d5de;border-radius:14px;background:#fffdf8;">' +
+            '<h4 style="margin:0 0 8px;color:#1e3a8a;"><span class="lang-en">' + roundLabel.en + ':</span><span class="lang-zh">' + roundLabel.zh + '：</span></h4>' +
+            '<p>Fluency ' + (result.fluency ?? '—') +
             ', Flexibility ' + (result.flexibility ?? '—') +
-            ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result);
+            ', Total ' + (result.total ?? '—') + '</p>' + autAnalysisHtml(result) +
+            '</div>';
     }).join('');
+    return '<p><strong>' + title + '</strong></p>' + blocks;
 }
 
 function renderAutChange(pre, post) {

@@ -367,12 +367,6 @@
             const attempts = Array.isArray(responses.attempts) && responses.attempts.length
                 ? responses.attempts
                 : [{ savedAt: responses.savedAt, result: responses.result }];
-            const boxEveryInput = title.indexOf('before training') !== -1;
-            if (attempts.length === 1 && !boxEveryInput) {
-                body += scoreFields(attempts[0].result || {});
-                body += analysisLines(attempts[0].result || {});
-                return body;
-            }
             attempts.forEach(function (attempt, index) {
                 const label = inputRoundLabel(index + 1);
                 const when = attempt.savedAt ? String(attempt.savedAt).slice(0, 16).replace('T', ' ') : '';
