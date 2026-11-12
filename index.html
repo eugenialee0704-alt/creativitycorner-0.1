@@ -373,6 +373,11 @@
             border-radius: 10px;
             line-height: 1.6;
         }
+
+        #consentStatementEn,
+        #consentStatementZh {
+            white-space: pre-wrap;
+        }
         
         .signature-section {
     display: grid;
@@ -1970,7 +1975,7 @@
         
         <div class="consent-content">
             <!-- ENGLISH VERSION -->
-            <div class="lang-en">
+            <div class="lang-en" id="consentStatementEn">
                 <h3>Hong Kong Baptist University, Informed Consent Statement for parents/guardians</h3>
                 <h4>[Developing an Online Platform to Cultivate Creativity in Primary School Students]</h4>
                 
@@ -2002,7 +2007,7 @@
             </div>
             
             <!-- CHINESE VERSION -->
-            <div class="lang-zh" style="display: none;">
+            <div class="lang-zh" id="consentStatementZh" style="display: none;">
                 <h3>香港浸會大學 家長/監護人同意書</h3>
                 <h4>【發展一個培養小學生創造力的網上平台】</h4>
                 
@@ -3462,8 +3467,27 @@ const puzzleImages = {
     }
 
 // Show consent form - FIXED VERSION
+function applyPublishedConsentStatement(statement) {
+    if (!statement || !statement.custom) return;
+    const english = document.getElementById('consentStatementEn');
+    const chinese = document.getElementById('consentStatementZh');
+    if (english) english.textContent = statement.english || '';
+    if (chinese) chinese.textContent = statement.chinese || '';
+}
+
+async function loadPublishedConsentStatement() {
+    try {
+        const response = await fetch(apiUrl('/api/public/consent-statement'), { cache: 'no-store' });
+        if (!response.ok) return;
+        applyPublishedConsentStatement(await response.json());
+    } catch (error) {
+        // Keep the statement already printed on the page.
+    }
+}
+
 function showConsentForm() {
     console.log("showConsentForm called - consent form should appear now");
+    loadPublishedConsentStatement();
     
     // Hide all sections first
     hideAllSections();

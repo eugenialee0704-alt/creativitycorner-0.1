@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -169,6 +170,12 @@ def init_db():
                 user_id TEXT PRIMARY KEY,
                 consent_json TEXT NOT NULL,
                 saved_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS consent_statement (
+                id TEXT PRIMARY KEY,
+                english TEXT NOT NULL,
+                chinese TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS submissions (
                 user_id TEXT NOT NULL,
@@ -700,6 +707,51 @@ def save_consent(body):
             (user_id, json.dumps(consent, ensure_ascii=False), now_iso()),
         )
         write_records(connection)
+    return 200, {"ok": True}
+
+
+def default_consent_statement():
+    path = Path(__file__).parent / "supabase" / "functions" / "creativity-api" / "consent-default.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    return {
+        "english": str(data.get("english") or ""),
+        "chinese": str(data.get("chinese") or ""),
+        "custom": False,
+    }
+
+
+def consent_statement():
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT english, chinese FROM consent_statement WHERE id = 'current'"
+        ).fetchone()
+    if row and (row["english"] or row["chinese"]):
+        return 200, {"english": row["english"], "chinese": row["chinese"], "custom": True}
+    return 200, default_consent_statement()
+
+
+def save_consent_statement(body):
+    english = str(body.get("english") or "").strip()
+    chinese = str(body.get("chinese") or "").strip()
+    if not english or not chinese:
+        return 400, {"error": "missing-statement"}
+    if len(english) > 20000 or len(chinese) > 20000:
+        return 400, {"error": "statement-too-long"}
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO consent_statement (id, english, chinese, updated_at)
+            VALUES ('current', ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                english = excluded.english,
+                chinese = excluded.chinese,
+                updated_at = excluded.updated_at
+            """,
+            (english, chinese, now_iso()),
+        )
     return 200, {"ok": True}
 
 
@@ -1319,6 +1371,10 @@ class RecordHandler(SimpleHTTPRequestHandler):
             status, payload = save_consent(body)
             self.send_json(status, payload)
             return
+        if method == "GET" and path == "/api/public/consent-statement":
+            status, payload = consent_statement()
+            self.send_json(status, payload)
+            return
         if method == "POST" and path == "/api/public/aut-rate":
             body = self.read_json()
             if body is None:
@@ -1341,6 +1397,16 @@ class RecordHandler(SimpleHTTPRequestHandler):
                 self.send_json(400, {"error": "Invalid JSON"})
                 return
             status, payload = reset_activities(body)
+            self.send_json(status, payload)
+            return
+        if method == "POST" and path == "/api/admin/consent-statement":
+            body = self.read_json()
+            if not self.admin_ok():
+                return
+            if body is None:
+                self.send_json(400, {"error": "Invalid JSON"})
+                return
+            status, payload = save_consent_statement(body)
             self.send_json(status, payload)
             return
         if method == "GET" and path == "/api/admin/users":

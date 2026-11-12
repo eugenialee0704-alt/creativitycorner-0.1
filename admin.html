@@ -96,6 +96,18 @@
         }
         .delete-user { width: auto; }
         .clean-status { min-height: 1.2em; margin: 0 0 12px; font-weight: 700; color: #b42318; }
+        .consent-editor { margin-bottom: 16px; }
+        .consent-editor textarea {
+            width: 100%;
+            min-height: 240px;
+            margin: 6px 0 14px;
+            padding: 12px;
+            border: 2px solid #f3d5de;
+            border-radius: 12px;
+            font: inherit;
+            line-height: 1.5;
+        }
+        .consent-editor .status { min-height: 1.2em; margin: 10px 0 0; font-weight: 700; color: #1b5e20; }
         img.drawing, img.signature {
             display: block;
             max-width: min(100%, 520px);
@@ -139,7 +151,24 @@
                 <button class="primary" id="loginBtn" type="submit">Sign in</button>
             </form>
         </section>
-        <section class="layout hidden" id="records">
+        <section class="hidden" id="records">
+            <div class="card consent-editor" id="consentEditor">
+                <h2 class="lang-en">Informed consent statement</h2>
+                <h2 class="lang-zh hidden">知情同意書</h2>
+                <p class="lang-en">Type the statement parents and children should read. Saving it replaces the statement on the consent page. Names and signature boxes stay the same.</p>
+                <p class="lang-zh hidden">輸入家長和孩子要閱讀的同意書。保存後，同意頁會顯示這段文字。姓名和簽名欄維持不變。</p>
+                <label class="lang-en" for="consentEnglish">English statement</label>
+                <label class="lang-zh hidden" for="consentEnglish">英文同意書</label>
+                <textarea id="consentEnglish"></textarea>
+                <label class="lang-en" for="consentChinese">Chinese statement</label>
+                <label class="lang-zh hidden" for="consentChinese">中文同意書</label>
+                <textarea id="consentChinese"></textarea>
+                <button class="primary" id="saveConsentStatementBtn" type="button">
+                    <span class="lang-en">Save statement</span><span class="lang-zh hidden">保存同意書</span>
+                </button>
+                <p class="status" id="consentStatementStatus"></p>
+            </div>
+            <div class="layout">
             <div>
                 <button class="danger" id="cleanUsersBtn" type="button">Clean all user data</button>
                 <p class="clean-status" id="cleanStatus"></p>
@@ -148,6 +177,7 @@
             <div class="card record" id="userRecord">
                 <p class="muted lang-en">Choose a name to see what that child saved.</p>
                 <p class="muted lang-zh hidden">請選擇一個名字，查看該參加者保存的內容。</p>
+            </div>
             </div>
         </section>
     </main>
@@ -537,11 +567,53 @@
             }
         }
 
+        async function loadConsentStatement() {
+            const status = document.getElementById('consentStatementStatus');
+            try {
+                const data = await adminGet('/api/public/consent-statement');
+                document.getElementById('consentEnglish').value = data.english || '';
+                document.getElementById('consentChinese').value = data.chinese || '';
+            } catch (error) {
+                status.textContent = language === 'en'
+                    ? 'The statement could not be opened. Check the internet connection, then try again.'
+                    : '未能開啟同意書。請檢查網絡連線，然後再試。';
+            }
+        }
+
+        async function saveConsentStatement() {
+            const status = document.getElementById('consentStatementStatus');
+            const english = document.getElementById('consentEnglish').value.trim();
+            const chinese = document.getElementById('consentChinese').value.trim();
+            if (!english || !chinese) {
+                status.textContent = language === 'en'
+                    ? 'Please enter both the English and the Chinese statement.'
+                    : '請同時輸入英文和中文同意書。';
+                return;
+            }
+            status.textContent = language === 'en' ? 'Saving...' : '正在保存...';
+            try {
+                await adminPost('/api/admin/consent-statement', { english: english, chinese: chinese });
+                status.textContent = language === 'en'
+                    ? 'Saved. This is the statement parents and children will read.'
+                    : '已保存。家長和孩子閱讀的同意書會顯示這段文字。';
+            } catch (error) {
+                const code = Number(error && error.message);
+                status.textContent = code === 400
+                    ? (language === 'en'
+                        ? 'Please enter both statements, and keep each one shorter than the limit.'
+                        : '請同時輸入英文和中文同意書，而且不要超過長度限制。')
+                    : (language === 'en'
+                        ? 'The statement could not be saved. Check the internet connection, then try again.'
+                        : '未能保存同意書。請檢查網絡連線，然後再試。');
+            }
+        }
+
         async function loadUsers() {
             const data = await adminGet('/api/admin/users');
             const users = data.users || [];
             const list = document.getElementById('userList');
             showRecords();
+            await loadConsentStatement();
             if (!users.length) {
                 list.innerHTML = '<p class="muted">No children have registered yet.</p>';
                 return;
@@ -606,6 +678,7 @@
             applyLanguage();
         });
         document.getElementById('cleanUsersBtn').addEventListener('click', cleanAllUsers);
+        document.getElementById('saveConsentStatementBtn').addEventListener('click', saveConsentStatement);
         document.getElementById('logoutBtn').addEventListener('click', function () {
             authHeader = '';
             sessionStorage.removeItem('cc_admin_auth');
