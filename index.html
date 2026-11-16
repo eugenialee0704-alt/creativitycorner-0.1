@@ -288,6 +288,38 @@
         .form-control.field-problem {
             border-color: #b00020;
         }
+
+        .required-mark {
+            color: #c62828;
+            font-weight: 700;
+            margin-left: 3px;
+        }
+
+        .required-note {
+            color: #c62828;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            margin: 16px 0 4px;
+            line-height: 1.4;
+        }
+
+        #activityContent .required-note {
+            display: block;
+            width: 100%;
+            margin: 18px 0 0;
+        }
+
+        .blank-box {
+            position: relative;
+        }
+
+        .blank-box .required-mark {
+            position: absolute;
+            top: 2px;
+            right: 8px;
+            margin-left: 0;
+        }
         
         .auth-buttons {
             display: flex;
@@ -1845,26 +1877,26 @@
             
             <form class="auth-form" id="authForm">
                 <div class="form-group signup-only">
-                    <label for="name" class="lang-en">Your Name</label>
-                    <label for="name" class="lang-zh">你的名字</label>
+                    <label for="name" class="lang-en">Your Name<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="name" class="lang-zh">你的名字<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="text" id="name" class="form-control" placeholder="Enter your name">
                 </div>
                 
                 <div class="form-group signup-only">
-                    <label for="age" class="lang-en">Your Age</label>
-                    <label for="age" class="lang-zh">你的年齡</label>
+                    <label for="age" class="lang-en">Your Age<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="age" class="lang-zh">你的年齡<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="number" id="age" class="form-control" placeholder="Enter your age">
                 </div>
                 
                 <div class="form-group signup-only">
-                    <label for="email" class="lang-en">Email Address</label>
-                    <label for="email" class="lang-zh">電子郵件地址</label>
+                    <label for="email" class="lang-en">Email Address<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="email" class="lang-zh">電子郵件地址<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="email" id="email" class="form-control" placeholder="Enter your email">
                 </div>
                 
                 <div class="form-group signup-only">
-                    <label for="language" class="lang-en">Preferred Language</label>
-                    <label for="language" class="lang-zh">首選語言</label>
+                    <label for="language" class="lang-en">Preferred Language<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="language" class="lang-zh">首選語言<span class="required-mark" aria-hidden="true">*</span></label>
                     <select id="language" class="form-control">
                         <option value="en">English</option>
                         <option value="zh">中文</option>
@@ -1872,20 +1904,20 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="username" class="lang-en">Username</label>
-                    <label for="username" class="lang-zh">用戶名</label>
+                    <label for="username" class="lang-en">Username<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="username" class="lang-zh">用戶名<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="text" id="username" class="form-control" autocomplete="username" placeholder="3 to 20 characters">
                 </div>
 
                 <div class="form-group">
-                    <label for="password" class="lang-en">Password</label>
-                    <label for="password" class="lang-zh">密碼</label>
+                    <label for="password" class="lang-en">Password<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="password" class="lang-zh">密碼<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="password" id="password" class="form-control" autocomplete="current-password">
                 </div>
 
                 <div class="form-group signup-only">
-                    <label for="confirmPassword" class="lang-en">Confirm Password</label>
-                    <label for="confirmPassword" class="lang-zh">再輸入密碼</label>
+                    <label for="confirmPassword" class="lang-en">Confirm Password<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="confirmPassword" class="lang-zh">再輸入密碼<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="password" id="confirmPassword" class="form-control" autocomplete="new-password">
                 </div>
                 
@@ -1918,8 +1950,8 @@
                 <p class="lang-en" style="text-align:center;">Enter the email you used when you signed up. We will send your username and a temporary password.</p>
                 <p class="lang-zh" style="text-align:center;">請輸入註冊時的電郵。我們會把用戶名和臨時密碼寄給你。</p>
                 <div class="form-group">
-                    <label for="forgotEmail" class="lang-en">Email Address</label>
-                    <label for="forgotEmail" class="lang-zh">電子郵件地址</label>
+                    <label for="forgotEmail" class="lang-en">Email Address<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="forgotEmail" class="lang-zh">電子郵件地址<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="email" id="forgotEmail" class="form-control" autocomplete="email">
                 </div>
                 <div class="auth-buttons">
@@ -1938,18 +1970,18 @@
                 <p class="lang-en" style="text-align:center;">You can also change your username. Then sign in with the new ones next time.</p>
                 <p class="lang-zh" style="text-align:center;">你也可以更改用戶名。下次請用新的用戶名和密碼登入。</p>
                 <div class="form-group">
-                    <label for="newUsername" class="lang-en">Username</label>
-                    <label for="newUsername" class="lang-zh">用戶名</label>
+                    <label for="newUsername" class="lang-en">Username<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="newUsername" class="lang-zh">用戶名<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="text" id="newUsername" class="form-control" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label for="newPassword" class="lang-en">New password</label>
-                    <label for="newPassword" class="lang-zh">新密碼</label>
+                    <label for="newPassword" class="lang-en">New password<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="newPassword" class="lang-zh">新密碼<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="password" id="newPassword" class="form-control" autocomplete="new-password">
                 </div>
                 <div class="form-group">
-                    <label for="confirmNewPassword" class="lang-en">Confirm new password</label>
-                    <label for="confirmNewPassword" class="lang-zh">再輸入新密碼</label>
+                    <label for="confirmNewPassword" class="lang-en">Confirm new password<span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="confirmNewPassword" class="lang-zh">再輸入新密碼<span class="required-mark" aria-hidden="true">*</span></label>
                     <input type="password" id="confirmNewPassword" class="form-control" autocomplete="new-password">
                 </div>
                 <div class="auth-buttons">
@@ -1958,6 +1990,7 @@
                     </button>
                 </div>
             </div>
+            <p class="required-note"><span class="lang-en">Red asterisks mean that these fields are required.</span><span class="lang-zh">紅色星號表示這些欄位必須填寫。</span></p>
         </section>
         
 <!-- Consent Form Section -->
@@ -2257,6 +2290,7 @@
                     <button class="btn btn-primary" id="submitActivityBtn">
                         <i class="fas fa-paper-plane"></i> <span class="lang-en">Submit Activity</span><span class="lang-zh">提交活動</span>
                     </button>
+                    <p class="required-note"><span class="lang-en">Red asterisks mean that these fields are required.</span><span class="lang-zh">紅色星號表示這些欄位必須填寫。</span></p>
                 </div>
             </div>
         </section>
@@ -4318,14 +4352,14 @@ function hideAllSections() {
                 </div>
                 
                 <div class="form-group">
-                    <label for="animalName" class="lang-en"><strong>Name your new animal:</strong></label>
-                    <label for="animalName" class="lang-zh"><strong>為你的新動物命名：</strong></label>
+                    <label for="animalName" class="lang-en"><strong>Name your new animal:<span class="required-mark" aria-hidden="true">*</span></strong></label>
+                    <label for="animalName" class="lang-zh"><strong>為你的新動物命名：<span class="required-mark" aria-hidden="true">*</span></strong></label>
                     <input type="text" id="animalName" class="form-control" placeholder="${currentLanguage === 'en' ? 'Enter your creative name' : '輸入你的創意名字'}" required>
                 </div>
                 
                 <div class="form-group">
-                    <label for="animalDescription" class="lang-en"><strong>Describe your new animal:</strong></label>
-                    <label for="animalDescription" class="lang-zh"><strong>描述你的新動物：</strong></label>
+                    <label for="animalDescription" class="lang-en"><strong>Describe your new animal:<span class="required-mark" aria-hidden="true">*</span></strong></label>
+                    <label for="animalDescription" class="lang-zh"><strong>描述你的新動物：<span class="required-mark" aria-hidden="true">*</span></strong></label>
                     <textarea id="animalDescription" class="form-control" placeholder="${currentLanguage === 'en' ? 'What special powers does it have? Where does it live? What does it eat?' : '它有什麼特殊能力？它住在哪裡？它吃什麼？'}" rows="3" required></textarea>
                 </div>
             </div>
@@ -4964,8 +4998,8 @@ function setupSequentialInput() {
                 <h4 class="lang-zh">✍️可能的後果：</h4>                            
                 ${Array.from({length: 6}, (_, i) => `
                     <div class="consequence-item">
-                        <label for="Result${i+1}" class="lang-en">Result ${i+1}:</label>
-                        <label for="Result${i+1}" class="lang-zh">後果 ${i+1}:</label>
+                        <label for="Result${i+1}" class="lang-en">Result ${i+1}:<span class="required-mark" aria-hidden="true">*</span></label>
+                        <label for="Result${i+1}" class="lang-zh">後果 ${i+1}:<span class="required-mark" aria-hidden="true">*</span></label>
                         <textarea class="consequence-input" id="Result${i+1}" placeholder="${currentLanguage === 'en' ? 'Type your answer here...' : '在此輸入你的答案...'}" required></textarea>
                     </div>
                 `).join('')}
@@ -5006,7 +5040,8 @@ function setupSequentialInput() {
                         <span class="arrow">→</span>
                         ${Array.from({length: 5}, (_, i) => `
                             <div class="blank-box">
-                                <input type="text" id="word${i+1}" placeholder="${currentLanguage === 'en' ? 'Word ' + (i+1) : '詞語 ' + (i+1)}" class="word-input" data-index="${i+1}">
+                                <span class="required-mark" aria-hidden="true">*</span>
+                                <input type="text" id="word${i+1}" placeholder="${currentLanguage === 'en' ? 'Word ' + (i+1) : '詞語 ' + (i+1)}" class="word-input" data-index="${i+1}" aria-required="true">
                             </div>
                             <span class="arrow">→</span>
                         `).join('')}
@@ -5065,8 +5100,8 @@ function setupSequentialInput() {
                     <div class="idea-item">
                         <div class="idea-question">
                             <i class="fas fa-search"></i>
-                            <span class="lang-en">Idea ${i+1}:</span>
-                            <span class="lang-zh">想法 ${i+1}:</span>
+                            <span class="lang-en">Idea ${i+1}:<span class="required-mark" aria-hidden="true">*</span></span>
+                            <span class="lang-zh">想法 ${i+1}:<span class="required-mark" aria-hidden="true">*</span></span>
                         </div>
                         <textarea class="consequence-input" id="idea${i+1}" placeholder="${currentLanguage === 'en' ? 'Describe your idea...' : '描述你的想法...'}" required></textarea>
                     </div>
@@ -5109,26 +5144,26 @@ function setupSequentialInput() {
                 
  <div class="solutions-container">
     <div class="solution-item solution-1">
-        <label for="solution1" class="lang-en">Solution 1:</label>
-        <label for="solution1" class="lang-zh">解決方案 1:</label>
+        <label for="solution1" class="lang-en">Solution 1:<span class="required-mark" aria-hidden="true">*</span></label>
+        <label for="solution1" class="lang-zh">解決方案 1:<span class="required-mark" aria-hidden="true">*</span></label>
         <textarea class="solution-input" id="solution1" placeholder="${currentLanguage === 'en' ? 'Type your solution...' : '輸入你的解決方案...'}" required 
                  oninput="updateSolutionBox(1)"></textarea>
     </div>
     <div class="solution-item solution-2">
-        <label for="solution2" class="lang-en">Solution 2:</label>
-        <label for="solution2" class="lang-zh">解決方案 2:</label>
+        <label for="solution2" class="lang-en">Solution 2:<span class="required-mark" aria-hidden="true">*</span></label>
+        <label for="solution2" class="lang-zh">解決方案 2:<span class="required-mark" aria-hidden="true">*</span></label>
         <textarea class="solution-input" id="solution2" placeholder="${currentLanguage === 'en' ? 'Type your solution...' : '輸入你的解決方案...'}" required 
                  oninput="updateSolutionBox(2)"></textarea>
     </div>
     <div class="solution-item solution-3">
-        <label for="solution3" class="lang-en">Solution 3:</label>
-        <label for="solution3" class="lang-zh">解決方案 3:</label>
+        <label for="solution3" class="lang-en">Solution 3:<span class="required-mark" aria-hidden="true">*</span></label>
+        <label for="solution3" class="lang-zh">解決方案 3:<span class="required-mark" aria-hidden="true">*</span></label>
         <textarea class="solution-input" id="solution3" placeholder="${currentLanguage === 'en' ? 'Type your solution...' : '輸入你的解決方案...'}" required 
                  oninput="updateSolutionBox(3)"></textarea>
     </div>
     <div class="solution-item solution-4">
-        <label for="solution4" class="lang-en">Solution 4:</label>
-        <label for="solution4" class="lang-zh">解決方案 4:</label>
+        <label for="solution4" class="lang-en">Solution 4:<span class="required-mark" aria-hidden="true">*</span></label>
+        <label for="solution4" class="lang-zh">解決方案 4:<span class="required-mark" aria-hidden="true">*</span></label>
         <textarea class="solution-input" id="solution4" placeholder="${currentLanguage === 'en' ? 'Type your solution...' : '輸入你的解決方案...'}" required 
                  oninput="updateSolutionBox(4)"></textarea>
     </div>
