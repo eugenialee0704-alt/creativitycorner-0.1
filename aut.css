@@ -580,6 +580,10 @@
     animation: aut-bounce 0.7s ease-in-out infinite;
 }
 
+.aut-popup.up .aut-penguin {
+    animation: aut-jump-out 1.25s ease-in-out 8 forwards;
+}
+
 .aut-penguin-body {
     position: absolute;
     left: 42px;
@@ -741,6 +745,13 @@
     0%, 100% { transform: translateY(0) scale(1, 1); }
     45% { transform: translateY(-8px) scale(0.98, 1.03); }
     70% { transform: translateY(0) scale(1.03, 0.97); }
+}
+
+@keyframes aut-jump-out {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    38% { transform: translateY(-26vh) scale(1.38); }
+    58% { transform: translateY(-26vh) scale(1.38); }
+    86% { transform: translateY(6px) scale(1.05, 0.94); }
 }
 
 @keyframes aut-clap-left {
