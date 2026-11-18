@@ -574,85 +574,126 @@
     position: absolute;
     left: 50%;
     bottom: 0;
-    width: 168px;
-    height: 158px;
-    margin-left: -84px;
-    animation: aut-bounce 0.52s ease-in-out infinite;
+    width: 180px;
+    height: 168px;
+    margin-left: -90px;
+    animation: aut-bounce 0.7s ease-in-out infinite;
 }
 
 .aut-penguin-body {
     position: absolute;
-    left: 44px;
-    bottom: 10px;
-    width: 80px;
-    height: 124px;
-    background: #1e3a8a;
-    border-radius: 42px 42px 36px 36px;
+    left: 42px;
+    bottom: 14px;
+    width: 96px;
+    height: 128px;
+    background: #3b6fd8;
+    border-radius: 52px 52px 46px 46px;
+    box-shadow: 0 0 0 4px #21468f, 0 8px 0 rgba(33, 70, 143, 0.18);
 }
 
 .aut-penguin-belly {
     position: absolute;
-    left: 14px;
-    top: 52px;
-    width: 52px;
-    height: 60px;
-    background: #fff8ee;
-    border-radius: 26px 26px 24px 24px;
+    left: 18px;
+    top: 48px;
+    width: 60px;
+    height: 70px;
+    background: #fff7ea;
+    border-radius: 34px 34px 30px 30px;
 }
 
 .aut-penguin-eye {
     position: absolute;
-    top: 24px;
-    width: 14px;
-    height: 16px;
+    top: 28px;
+    width: 22px;
+    height: 24px;
     background: white;
     border-radius: 50%;
+    box-shadow: 0 0 0 3px #21468f;
 }
 
+.aut-penguin-eye:before,
 .aut-penguin-eye:after {
     content: '';
     position: absolute;
-    left: 4px;
+    border-radius: 50%;
+}
+
+.aut-penguin-eye:before {
+    left: 7px;
+    top: 8px;
+    width: 9px;
+    height: 10px;
+    background: #24324a;
+}
+
+.aut-penguin-eye:after {
+    left: 5px;
     top: 5px;
     width: 6px;
     height: 6px;
-    background: #1a1a1a;
-    border-radius: 50%;
+    background: white;
 }
 
 .aut-penguin-eye.left { left: 20px; }
 .aut-penguin-eye.right { right: 20px; }
 
+.aut-penguin-blush {
+    position: absolute;
+    top: 56px;
+    width: 16px;
+    height: 10px;
+    background: #ff8fab;
+    border-radius: 50%;
+    opacity: 0.9;
+}
+
+.aut-penguin-blush.left { left: 12px; }
+.aut-penguin-blush.right { right: 12px; }
+
 .aut-penguin-beak {
     position: absolute;
-    left: 30px;
-    top: 42px;
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 16px solid #ffb703;
+    left: 34px;
+    top: 50px;
+    width: 28px;
+    height: 18px;
+    background: #ffb703;
+    border-radius: 40% 40% 50% 50%;
+    box-shadow: 0 0 0 3px #e09200, inset 0 7px 0 #ffe08a;
 }
 
 .aut-wing {
     position: absolute;
-    bottom: 22px;
-    width: 24px;
-    height: 72px;
-    background: #16306f;
-    border-radius: 14px;
-    transform-origin: 50% 10px;
+    bottom: 34px;
+    width: 36px;
+    height: 62px;
+    background: #5c8ef0;
+    border-radius: 22px 22px 18px 18px;
+    box-shadow: 0 0 0 4px #21468f;
+    transform-origin: 50% 12px;
 }
 
 .aut-wing.left {
-    left: 14px;
-    animation: aut-clap-left 0.28s ease-in-out infinite;
+    left: 8px;
+    animation: aut-clap-left 0.45s ease-in-out infinite;
 }
 
 .aut-wing.right {
-    right: 14px;
-    animation: aut-clap-right 0.28s ease-in-out infinite;
+    right: 8px;
+    animation: aut-clap-right 0.45s ease-in-out infinite;
 }
+
+.aut-foot {
+    position: absolute;
+    bottom: 6px;
+    width: 28px;
+    height: 14px;
+    background: #ffb703;
+    border-radius: 14px 14px 10px 10px;
+    box-shadow: 0 0 0 3px #e09200;
+}
+
+.aut-foot.left { left: 58px; }
+.aut-foot.right { right: 58px; }
 
 .aut-popup.up .btn {
     width: fit-content;
@@ -689,18 +730,19 @@
 }
 
 @keyframes aut-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-12px); }
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    45% { transform: translateY(-8px) scale(0.98, 1.03); }
+    70% { transform: translateY(0) scale(1.03, 0.97); }
 }
 
 @keyframes aut-clap-left {
-    0%, 100% { transform: rotate(24deg); }
-    50% { transform: rotate(-36deg); }
+    0%, 100% { transform: rotate(16deg); }
+    50% { transform: rotate(-18deg); }
 }
 
 @keyframes aut-clap-right {
-    0%, 100% { transform: rotate(-24deg); }
-    50% { transform: rotate(36deg); }
+    0%, 100% { transform: rotate(-16deg); }
+    50% { transform: rotate(18deg); }
 }
 
 @media (max-width: 640px) {

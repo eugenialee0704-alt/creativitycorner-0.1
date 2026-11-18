@@ -247,12 +247,16 @@ function loadRecord() {
             '<div class="aut-penguin">' +
             '<span class="aut-wing left"></span>' +
             '<span class="aut-penguin-body">' +
+            '<span class="aut-penguin-belly"></span>' +
             '<span class="aut-penguin-eye left"></span>' +
             '<span class="aut-penguin-eye right"></span>' +
+            '<span class="aut-penguin-blush left"></span>' +
+            '<span class="aut-penguin-blush right"></span>' +
             '<span class="aut-penguin-beak"></span>' +
-            '<span class="aut-penguin-belly"></span>' +
             '</span>' +
             '<span class="aut-wing right"></span>' +
+            '<span class="aut-foot left"></span>' +
+            '<span class="aut-foot right"></span>' +
             '</div></div>';
     }
 
