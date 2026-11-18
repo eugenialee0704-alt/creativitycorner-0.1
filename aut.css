@@ -702,19 +702,27 @@
 
 .aut-celebrate {
     pointer-events: none;
-    position: absolute;
-    left: 50%;
-    top: 46%;
-    width: 0;
-    height: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+}
+
+.aut-penguin {
+    z-index: 2;
+}
+
+.aut-popup.up .aut-result-note,
+.aut-popup.up .btn {
+    position: relative;
+    z-index: 2;
 }
 
 .aut-celebrate span {
     position: absolute;
-    left: 0;
-    top: 0;
-    font-size: 2rem;
-    animation: aut-burst 1.6s ease-out var(--d, 0s) 2 both;
+    left: var(--x);
+    top: var(--y);
+    font-size: 2.3rem;
+    animation: aut-screen-pop 1.6s ease-out var(--d, 0s) 2 both;
 }
 
 @keyframes aut-twinkle {
@@ -722,11 +730,11 @@
     50% { transform: scale(1.18) rotate(8deg); }
 }
 
-@keyframes aut-burst {
-    0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-    18% { opacity: 1; }
+@keyframes aut-screen-pop {
+    0% { transform: scale(0.3) rotate(-16deg); opacity: 0; }
+    18% { transform: scale(1.15) rotate(8deg); opacity: 1; }
     70% { opacity: 1; }
-    100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1.2); opacity: 0; }
+    100% { transform: scale(0.85) translateY(-36px) rotate(18deg); opacity: 0; }
 }
 
 @keyframes aut-bounce {

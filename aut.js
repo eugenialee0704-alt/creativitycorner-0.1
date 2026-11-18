@@ -235,13 +235,14 @@ function loadRecord() {
     }
 
     function celebrateMarkup() {
-        const bits = ['⭐', '👏', '✨', '🌟', '💛', '🎉', '💡', '✨', '⭐', '👏', '🌟', '🎉'];
-        const confetti = bits.map(function (bit, index) {
-            const angle = (index / bits.length) * Math.PI * 2;
-            const x = Math.round(Math.cos(angle) * 150);
-            const y = Math.round(Math.sin(angle) * 90 - 20);
-            return '<span style="--x:' + x + 'px;--y:' + y + 'px;--d:' + (index * 0.07) + 's">' + bit + '</span>';
-        }).join('');
+        const bits = ['⭐', '👏', '✨', '🌟', '💛', '🎉', '💡'];
+        let confetti = '';
+        for (let index = 0; index < 42; index++) {
+            const x = 4 + ((index * 17) % 90);
+            const y = 4 + ((index * 29) % 88);
+            confetti += '<span style="--x:' + x + '%;--y:' + y + '%;--d:' + ((index % 8) * 0.08) + 's">' +
+                bits[index % bits.length] + '</span>';
+        }
         return '<div class="aut-reward" aria-hidden="true">' +
             '<div class="aut-celebrate">' + confetti + '</div>' +
             '<div class="aut-penguin">' +
