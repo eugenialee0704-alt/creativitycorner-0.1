@@ -245,7 +245,7 @@ function loadRecord() {
         }
         return '<div class="aut-reward" aria-hidden="true">' +
             '<div class="aut-celebrate">' + confetti + '</div>' +
-            '<div class="aut-penguin">' +
+            '<div class="aut-penguin aut-penguin-roam">' +
             '<span class="aut-wing left"></span>' +
             '<span class="aut-penguin-body">' +
             '<span class="aut-penguin-belly"></span>' +
@@ -807,6 +807,24 @@ window.prepareAutForAccount = function (user) {
         };
     }
 
+    function releaseRoamingPenguin() {
+        document.querySelectorAll('body > .aut-penguin-roam').forEach(function (penguin) {
+            penguin.remove();
+        });
+    }
+
+    function startRoamingPenguin(root) {
+        releaseRoamingPenguin();
+        const penguin = root.querySelector('.aut-penguin-roam');
+        if (!penguin) return;
+        const reward = penguin.closest('.aut-reward');
+        if (reward) reward.classList.add('aut-reward-roam');
+        document.body.appendChild(penguin);
+        penguin.addEventListener('animationend', function (event) {
+            if (event.animationName === 'aut-jump-around') penguin.remove();
+        });
+    }
+
     function showScoreResult() {
         const record = loadRecord();
         const pre = record.pre && record.pre.result;
@@ -830,12 +848,16 @@ window.prepareAutForAccount = function (user) {
             '</div>';
         document.body.appendChild(wrap);
         applyLang();
-        if (copy.kind === 'up') playClapping();
+        if (copy.kind === 'up') {
+            playClapping();
+            startRoamingPenguin(wrap);
+        }
         if (copy.tryAgain) {
             bindRetakeActions('autScoreRetake', 'autScoreActivities');
             return;
         }
         document.getElementById('autScoreResultOk').addEventListener('click', function () {
+            releaseRoamingPenguin();
             wrap.remove();
         });
     }
@@ -939,6 +961,7 @@ window.prepareAutForAccount = function (user) {
                 '<p class="aut-note">你的創意分數保存在這裡。</p>') +
             '<div class="aut-layout"><div class="aut-archive-list">' + list + improvementButton + '</div><div id="autDetail"></div></div></div>';
         document.getElementById('autBack').addEventListener('click', function () {
+            releaseRoamingPenguin();
             if (typeof showDashboard === 'function') showDashboard();
         });
         document.querySelectorAll('.aut-archive-item').forEach(function (button) {
@@ -951,6 +974,7 @@ window.prepareAutForAccount = function (user) {
     function renderArchiveDetail(selected) {
         const detail = document.getElementById('autDetail');
         const record = loadRecord();
+        releaseRoamingPenguin();
         if (selected === 'change') {
             const pre = record.pre.result;
             const post = record.post.result;
@@ -961,6 +985,7 @@ window.prepareAutForAccount = function (user) {
                 scoreCards(pre, post) + copy.html +
                 (copy.tryAgain ? retakeActions('autDetailRetake', 'autDetailActivities') : '');
             bindRetakeActions('autDetailRetake', 'autDetailActivities');
+            if (copy.kind === 'up') startRoamingPenguin(detail);
             applyLang();
             return;
         }
