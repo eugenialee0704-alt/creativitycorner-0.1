@@ -189,14 +189,71 @@ function loadRecord() {
             '</div>';
     }
 
+    let rewardAudio = null;
+
+    function prepareRewardSound() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        try {
+            if (!rewardAudio) rewardAudio = new AudioCtx();
+            if (rewardAudio.state === 'suspended') rewardAudio.resume();
+        } catch (error) {
+            rewardAudio = null;
+        }
+    }
+
+    function playClapping() {
+        prepareRewardSound();
+        const ctx = rewardAudio;
+        if (!ctx || ctx.state === 'suspended') return;
+        const start = ctx.currentTime + 0.05;
+        for (let i = 0; i < 12; i++) {
+            const t = start + i * 0.13 + (i % 3) * 0.03;
+            const duration = 0.09;
+            const frameCount = Math.floor(ctx.sampleRate * duration);
+            const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let n = 0; n < frameCount; n++) {
+                data[n] = (Math.random() * 2 - 1) * Math.pow(1 - n / frameCount, 2.4);
+            }
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 900 + (i % 4) * 380;
+            filter.Q.value = 0.7;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(0.42, t + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            source.start(t);
+            source.stop(t + duration + 0.02);
+        }
+    }
+
     function celebrateMarkup() {
-        const bits = ['⭐', '💡', '✨', '🌟', '💛', '⭐', '💡', '✨'];
-        return '<div class="aut-celebrate" aria-hidden="true">' + bits.map(function (bit, index) {
+        const bits = ['⭐', '👏', '✨', '🌟', '💛', '🎉', '💡', '✨', '⭐', '👏', '🌟', '🎉'];
+        const confetti = bits.map(function (bit, index) {
             const angle = (index / bits.length) * Math.PI * 2;
-            const x = Math.round(Math.cos(angle) * 120);
-            const y = Math.round(Math.sin(angle) * 70 - 30);
-            return '<span style="--x:' + x + 'px;--y:' + y + 'px;--d:' + (index * 0.08) + 's">' + bit + '</span>';
-        }).join('') + '</div>';
+            const x = Math.round(Math.cos(angle) * 150);
+            const y = Math.round(Math.sin(angle) * 90 - 20);
+            return '<span style="--x:' + x + 'px;--y:' + y + 'px;--d:' + (index * 0.07) + 's">' + bit + '</span>';
+        }).join('');
+        return '<div class="aut-reward" aria-hidden="true">' +
+            '<div class="aut-celebrate">' + confetti + '</div>' +
+            '<div class="aut-penguin">' +
+            '<span class="aut-wing left"></span>' +
+            '<span class="aut-penguin-body">' +
+            '<span class="aut-penguin-eye left"></span>' +
+            '<span class="aut-penguin-eye right"></span>' +
+            '<span class="aut-penguin-beak"></span>' +
+            '<span class="aut-penguin-belly"></span>' +
+            '</span>' +
+            '<span class="aut-wing right"></span>' +
+            '</div></div>';
     }
 
     function tile(value, en, zh, extraClass) {
@@ -653,6 +710,7 @@ window.prepareAutForAccount = function (user) {
             return;
         }
         submitLock = true;
+        prepareRewardSound();
         stopTimer();
         if (button) {
             button.disabled = true;
@@ -767,6 +825,7 @@ window.prepareAutForAccount = function (user) {
             '</div>';
         document.body.appendChild(wrap);
         applyLang();
+        if (copy.kind === 'up') playClapping();
         if (copy.tryAgain) {
             bindRetakeActions('autScoreRetake', 'autScoreActivities');
             return;
@@ -893,6 +952,7 @@ window.prepareAutForAccount = function (user) {
             const change = scoreApi().improvement(pre, post);
             const copy = creativityResultCopy(change);
             detail.innerHTML = langPair('<h3>Change in creativity scores</h3>', '<h3>創意分數的變化</h3>') +
+                (copy.kind === 'up' ? celebrateMarkup() : '') +
                 scoreCards(pre, post) + copy.html +
                 (copy.tryAgain ? retakeActions('autDetailRetake', 'autDetailActivities') : '');
             bindRetakeActions('autDetailRetake', 'autDetailActivities');
